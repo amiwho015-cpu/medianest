@@ -92,6 +92,16 @@ footer{border-top:1px solid var(--line);padding:25px 0;color:#707788;font-size:1
 .mobile-links{display:none;padding:0 0 16px}.mobile-links a{display:block;padding:9px 0;color:#aeb4c2;text-decoration:none}
 @media(max-width:900px){.hero-grid,.about,.contact{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}.editor{grid-template-columns:1fr}}
 @media(max-width:650px){.links,.nav-cta{display:none!important}.menu{display:block}.hero{padding-top:60px}.hero-card{display:none}.cards{grid-template-columns:1fr}.section-head{display:block}.wrap{width:min(100% - 22px,1120px)}h1{letter-spacing:-2px}}
+
+textarea{width:100%;background:#0c0e14;border:1px solid var(--line);color:#fff;padding:13px 14px;border-radius:11px;font:inherit;resize:vertical;min-height:84px}
+textarea:focus{outline:2px solid rgba(0,229,255,.6);outline-offset:2px}
+.ai-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.ai-row select{flex:1 1 200px}
+.ai-pick{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ai-thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.ai-thumbs:empty{margin:0}
+.thumb{position:relative;width:92px;height:92px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#090a0e}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:4px;right:4px;width:22px;height:22px;border:0;border-radius:50%;background:rgba(0,0,0,.72);color:#fff;cursor:pointer;line-height:22px;padding:0}
+.ai-actions{margin-top:14px}
 </style>
 </head>
 <body>
@@ -100,13 +110,13 @@ footer{border-top:1px solid var(--line);padding:25px 0;color:#707788;font-size:1
   <div class="wrap nav">
     <a class="logo" href="#home"><span class="logo-dot"></span>MediaNest</a>
     <nav class="links" aria-label="Main">
-      <a href="#tools">Tools</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
+      <a href="#tools">Tools</a><a href="#ai-edit">AI Edit</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
     </nav>
     <a class="nav-cta" href="#contact">Hire Me</a>
     <button class="menu" id="menuBtn" aria-label="Menu">☰</button>
   </div>
   <div class="wrap mobile-links" id="mobileLinks">
-    <a href="#tools">Tools</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
+    <a href="#tools">Tools</a><a href="#ai-edit">AI Edit</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
   </div>
 </header>
 
@@ -161,6 +171,24 @@ footer{border-top:1px solid var(--line);padding:25px 0;color:#707788;font-size:1
       <div id="out" aria-live="polite"></div>
     </div>
     <p class="note">Shudhu nijer ba onumoti thaka content download korun. Platform-er terms mene cholun.</p>
+  </div>
+</section>
+
+<section id="ai-edit">
+  <div class="wrap">
+    <div class="section-head"><div><div class="kicker">New</div><h2>AI Image Edit</h2></div><p class="section-desc">12-ta GenX AI model. Ekshathe 5-ta porjonto chhobi upload kore prompt likho, AI edit kore dibe. Chhobi na dile text-to-image hobe.</p></div>
+    <div class="glass toolbox">
+      <div class="ai-row"><select id="aiModel" aria-label="Model"></select><select id="aiRatio" aria-label="Ratio"></select></div>
+      <div class="ai-pick" id="aiPick">
+        <label class="upload">＋ Upload Images<input id="aiFiles" type="file" accept="image/*" multiple hidden></label>
+        <span class="note" id="aiCount"></span>
+      </div>
+      <div class="ai-thumbs" id="aiThumbs"></div>
+      <textarea id="aiPrompt" maxlength="1000" placeholder="Ki edit korte chao likho (jemon: background ke space kore dao)" aria-label="Prompt"></textarea>
+      <div class="ai-actions"><button class="go" id="aiGo" type="button">Generate / Edit</button></div>
+      <div id="aiOut" aria-live="polite"></div>
+    </div>
+    <p class="note">Edit-er jonno chhobi temporary public link-e (catbox) upload hoy, tai private chhobi diyo na.</p>
   </div>
 </section>
 
@@ -284,6 +312,47 @@ $('left').onclick=()=>{angle-=90;draw()};$('right').onclick=()=>{angle+=90;draw(
 $('reset').onclick=()=>{if(!loaded)return;angle=0;controls.forEach(id=>$(id).value=id==='blur'?0:100);updateLabels();draw()};
 $('save').onclick=()=>{if(!loaded)return;const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='medianest-edited.png';a.click()};
 updateLabels();
+
+/* AI image edit (GenX models, multi-image) */
+const ai={images:[],max:5,models:[]};
+const aiModel=()=>ai.models.find(m=>String(m.id)===$('aiModel').value);
+function aiRender(){
+ const m=aiModel(),can=!m||m.supportsImage;
+ $('aiPick').style.display=can?'flex':'none';
+ if(!can)ai.images=[];
+ $('aiThumbs').replaceChildren(...ai.images.map((x,i)=>{const b=el('button',{type:'button',textContent:'×',title:'Remove'});b.onclick=()=>{ai.images.splice(i,1);aiRender()};return el('div',{className:'thumb'},el('img',{src:x,alt:'Image '+(i+1)}),b)}));
+ $('aiCount').textContent=can?(ai.images.length+'/'+ai.max+' chhobi'+(ai.images.length?' (edit mode)':' (chhobi na dile text-to-image)')):'Ei model shudhu text-to-image';
+}
+function aiShrink(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,1600/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.9))};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('Chhobi pora jayni: '+file.name))};im.src=u})}
+$('aiFiles').onchange=async()=>{
+ const files=[...$('aiFiles').files];$('aiFiles').value='';
+ const room=ai.max-ai.images.length;
+ try{for(const f of files.slice(0,room))ai.images.push(await aiShrink(f))}catch(e){$('aiOut').replaceChildren(el('span',{className:'err',textContent:e.message}))}
+ if(files.length>room)$('aiOut').replaceChildren(el('span',{className:'err',textContent:'Max '+ai.max+'-ta chhobi, bakigulo bad gechhe.'}));
+ aiRender();
+};
+$('aiModel').onchange=aiRender;
+$('aiGo').onclick=async()=>{
+ const out=$('aiOut'),prompt=$('aiPrompt').value.trim();
+ if(!prompt){out.replaceChildren(el('span',{className:'err',textContent:'Prompt likho.'}));return}
+ $('aiGo').disabled=true;out.replaceChildren('Kaj hocche... (1-2 minute lagte pare)');
+ try{
+  const r=await fetch('/api/ai/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:+$('aiModel').value,ratio:$('aiRatio').value,prompt,images:ai.images})});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Kichu ekta bhul hoyeche. Abar chesta koro.')}
+  const used=+r.headers.get('X-Images-Used')||0,u=URL.createObjectURL(await r.blob()),a=link(u,'Save');a.download='medianest-ai.png';
+  const nodes=[el('img',{src:u,alt:prompt,className:'out-media'}),a];
+  if(ai.images.length>1&&used<ai.images.length)nodes.push(el('p',{className:'note',textContent:'Ei model ekadhik chhobi nite parenni, shudhu prothom chhobi-ta use hoyeche.'}));
+  out.replaceChildren(...nodes);
+ }catch(e){out.replaceChildren(el('span',{className:'err',textContent:e.message}))}
+ $('aiGo').disabled=false;
+};
+(async()=>{
+ try{const d=await (await fetch('/api/ai/models')).json();ai.models=d.models;ai.max=d.maxImages||5;
+  $('aiModel').replaceChildren(...d.models.map(m=>el('option',{value:m.id,textContent:`${String(m.id).padStart(2,'0')}. ${m.tag} ${m.name}${m.supportsImage?'':' (text only)'}`})));
+  $('aiRatio').replaceChildren(...d.ratios.map(r=>el('option',{value:r,textContent:'Ratio '+r})));
+ }catch(e){$('aiOut').replaceChildren(el('span',{className:'err',textContent:'Model list load hoyni.'}))}
+ aiRender();
+})();
 </script>
 </body>
 </html>
