@@ -1,57 +1,182 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="bn-Latn">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MediaNest</title>
+<title>MediaNest | Video, gaan, chhobi, namaz - shob ek jaygay</title>
+<meta name="description" content="MediaNest: link paste kore video download, YouTube ar Spotify search, AI image, AI song, namaz-er shomoy, weather ar aro onek kichu. Login lagbe na.">
+<meta name="theme-color" content="#0a3d2e">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a3d2e'/%3E%3Ccircle cx='30' cy='32' r='16' fill='%23e5383b'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Hind+Siliguri:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#12141a;--panel:#1a1e27;--line:#2a303c;--text:#e8eaf0;--muted:#8d95a6;--accent:#e8c27a;--ink:#1b1608;--err:#ff8a7a}
+:root{
+  --green-900:#0a3d2e;
+  --green-800:#0f5240;
+  --green-100:#dcebe4;
+  --sun:#e5383b;
+  --paper:#f5f8f6;
+  --card:#ffffff;
+  --ink:#10211b;
+  --muted:#586861;
+  --line:#d6e1db;
+  --err:#b42318;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.6 "Hind Siliguri",system-ui,sans-serif}
-main{max-width:640px;margin:0 auto;padding:28px 18px 60px}
-h1{font:700 34px/1.1 "Bricolage Grotesque",system-ui,sans-serif;margin:8px 0 6px;letter-spacing:-.5px}
-.sub{color:var(--muted);margin:0 0 22px}
-nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px}
-nav button{flex:none;background:none;border:1px solid var(--line);color:var(--muted);padding:8px 14px;border-radius:999px;font:inherit;cursor:pointer}
-nav button[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:500}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
-form{display:flex;gap:8px;flex-wrap:wrap}
-input{flex:1 1 200px;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:12px 14px;border-radius:10px;font:inherit}
-select{background:var(--bg);border:1px solid var(--line);color:var(--text);padding:12px;border-radius:10px;font:inherit}
-.out-media{max-width:100%;border-radius:10px;display:block;margin:6px 0}
-input:focus,select:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.go{background:var(--accent);color:var(--ink);border:0;padding:12px 20px;border-radius:10px;font:500 16px inherit;font-family:inherit;cursor:pointer}
-.go[disabled]{opacity:.5}
-#out{margin-top:16px}
-.err{color:var(--err)}
-.item{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+html{scroll-behavior:smooth;scroll-padding-top:12px}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.65 "Hind Siliguri",system-ui,sans-serif}
+a{color:inherit}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px}
+
+/* hero */
+.hero{position:relative;overflow:hidden;background:var(--green-900);color:#fff;padding-bottom:104px}
+.sun{position:absolute;width:300px;height:300px;border-radius:50%;background:var(--sun);right:-90px;top:70px}
+.hero .wrap{position:relative;z-index:1}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:20px 0}
+.brand{font:700 21px/1 "Sora",system-ui,sans-serif;text-decoration:none;display:flex;align-items:center;gap:10px;letter-spacing:-.2px}
+.brand i{width:14px;height:14px;border-radius:50%;background:var(--sun);display:block;box-shadow:0 0 0 3px rgba(255,255,255,.18)}
+.bar nav{display:flex;gap:22px}
+.bar nav a{text-decoration:none;color:rgba(255,255,255,.82);font-weight:500;padding:4px 0}
+.bar nav a:hover{color:#fff}
+.intro{padding:46px 0 0;max-width:600px}
+h1{font:700 clamp(36px,8.2vw,62px)/1.04 "Sora",system-ui,sans-serif;margin:0 0 18px;letter-spacing:-1.4px}
+.lead{margin:0;font-size:18px;color:rgba(255,255,255,.84);max-width:30em}
+
+/* tool */
+main{position:relative;z-index:2;margin-top:-64px}
+.tool{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 18px 40px -22px rgba(10,61,46,.45)}
+#tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+#tabs button{background:var(--paper);border:1px solid var(--line);color:var(--muted);padding:8px 15px;border-radius:999px;font:500 15px/1.3 "Hind Siliguri",system-ui,sans-serif;cursor:pointer}
+#tabs button:hover{border-color:var(--green-800);color:var(--green-900)}
+#tabs button[aria-selected=true]{background:var(--green-900);border-color:var(--green-900);color:#fff}
+form{display:flex;gap:10px;flex-wrap:wrap}
+input,select{background:#fff;border:1px solid var(--line);color:var(--ink);padding:13px 15px;border-radius:12px;font:inherit}
+input{flex:1 1 220px;min-width:0}
+input::placeholder{color:#8a9a93}
+input:focus,select:focus,button:focus-visible,a:focus-visible{outline:3px solid rgba(15,82,64,.45);outline-offset:2px}
+.go{background:var(--green-900);color:#fff;border:0;padding:13px 26px;border-radius:12px;font:600 16px "Hind Siliguri",system-ui,sans-serif;cursor:pointer}
+.go:hover{background:var(--green-800)}
+.go[disabled]{opacity:.55;cursor:wait}
+#out{margin-top:18px;min-height:2px;overflow-wrap:anywhere}
+#out:empty{margin-top:0}
+.out-media{max-width:100%;border-radius:12px;display:block;margin:8px 0}
+.err{color:var(--err);font-weight:500}
+.item{display:flex;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
 .item:first-child{border-top:0}
-.item img{width:84px;height:56px;object-fit:cover;border-radius:8px;flex:none;background:var(--bg)}
+.item img{width:92px;height:60px;object-fit:cover;border-radius:8px;flex:none;background:var(--green-100)}
 .item .t{flex:1;min-width:0}
-.item .t b{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.item .t b{font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .item .m{color:var(--muted);font-size:14px}
-.btn{display:inline-block;border:1px solid var(--accent);color:var(--accent);padding:6px 12px;border-radius:8px;text-decoration:none;font-size:14px;background:none;cursor:pointer;font-family:inherit;margin:2px 4px 2px 0}
-.row{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+.btn{display:inline-block;border:1px solid var(--green-800);color:var(--green-900);padding:6px 14px;border-radius:9px;text-decoration:none;font:500 14px "Hind Siliguri",system-ui,sans-serif;background:none;cursor:pointer;margin:3px 6px 3px 0}
+.btn:hover{background:var(--green-100)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .row:first-child{border-top:0}
-.big{font:700 40px "Bricolage Grotesque",system-ui,sans-serif}
-.note{color:var(--muted);font-size:13px;margin-top:22px}
-@media (prefers-reduced-motion:no-preference){.go{transition:transform .1s}.go:active{transform:scale(.97)}}
+.big{font:700 44px/1.1 "Sora",system-ui,sans-serif;color:var(--green-900)}
+.note{color:var(--muted);font-size:14px;margin:18px 4px 0}
+
+/* why */
+.why{padding:64px 0 8px}
+.facts{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.facts li{padding:18px 0;border-top:1px solid var(--line)}
+.facts li:last-child{border-bottom:1px solid var(--line)}
+.facts b{display:block;font:600 19px/1.3 "Sora",system-ui,sans-serif;margin-bottom:4px;color:var(--green-900)}
+.facts span{color:var(--muted)}
+
+/* contact */
+#contact{padding:64px 0 72px}
+.contact{display:grid;gap:28px;align-items:center}
+h2{font:700 clamp(28px,5.5vw,38px)/1.12 "Sora",system-ui,sans-serif;margin:0 0 10px;letter-spacing:-.6px;color:var(--green-900)}
+.contact p{margin:0;color:var(--muted);max-width:28em}
+.owner{background:var(--green-900);color:#fff;border-radius:18px;padding:26px;position:relative;overflow:hidden}
+.owner::after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;background:var(--sun);right:-48px;bottom:-56px}
+.owner > *{position:relative;z-index:1}
+.owner small{display:block;color:rgba(255,255,255,.75);font-size:15px}
+.owner strong{display:block;font:700 32px/1.15 "Sora",system-ui,sans-serif;margin:2px 0 20px;letter-spacing:-.5px}
+.fb{display:inline-block;background:#fff;color:var(--green-900);text-decoration:none;font-weight:600;padding:12px 22px;border-radius:12px}
+.fb:hover{background:var(--green-100)}
+.fb:focus-visible{outline-color:#fff}
+
+footer{border-top:1px solid var(--line);padding:22px 0 34px;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+@media (min-width:720px){
+  .sun{width:440px;height:440px;right:-60px;top:30px}
+  .tool{padding:28px}
+  .facts{grid-template-columns:repeat(3,1fr);gap:28px}
+  .facts li{border-top:2px solid var(--green-900);border-bottom:0!important;padding:16px 0 0}
+  .contact{grid-template-columns:1.1fr 1fr}
+}
+@media (max-width:420px){
+  .bar nav{gap:16px}
+  .sun{width:230px;height:230px;right:-80px;top:96px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .go,.fb{transition:transform .1s,background-color .15s}
+  .go:active,.fb:active{transform:scale(.97)}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-<main>
-  <h1>MediaNest</h1>
-  <p class="sub">Link paste koro, download nao. Shob kichu ek jaygay.</p>
-  <nav role="tablist" id="tabs"></nav>
-  <section class="card">
-    <form id="f"><select id="opt" hidden aria-label="Option"></select><input id="q" required autocomplete="off"><button class="go" id="b">Dhoro</button></form>
+
+<div class="hero">
+  <div class="sun" aria-hidden="true"></div>
+  <div class="wrap">
+    <header class="bar">
+      <a class="brand" href="#"><i aria-hidden="true"></i>MediaNest</a>
+      <nav aria-label="Main">
+        <a href="#tools">Tools</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </header>
+    <div class="intro">
+      <h1>Link paste koro, download nao.</h1>
+      <p class="lead">Video, gaan, AI chhobi, namaz-er shomoy, weather. Shob kichu ek jaygay, login chhara.</p>
+    </div>
+  </div>
+</div>
+
+<main class="wrap" id="tools">
+  <section class="tool" aria-label="Tools">
+    <nav role="tablist" id="tabs" aria-label="Tool list"></nav>
+    <form id="f"><select id="opt" hidden aria-label="Option"></select><input id="q" required autocomplete="off" aria-label="Input"><button class="go" id="b">Dhoro</button></form>
     <div id="out" aria-live="polite"></div>
   </section>
   <p class="note">Shudhu nijer ba onumoti thaka content download korun. Platform-er terms mene cholun.</p>
 </main>
+
+<section class="wrap why" aria-label="Keno MediaNest">
+  <ul class="facts">
+    <li><b>Login lagbe na</b><span>Site-e dhuke shorashori kaj shuru koro.</span></li>
+    <li><b>Phone-e shundor</b><span>Chhoto screen-e-o shob button ar result porishkar dekhay.</span></li>
+    <li><b>12-ta tool</b><span>Video, YouTube, Spotify, TikTok, AI, namaz, weather ar aro.</span></li>
+  </ul>
+</section>
+
+<section class="wrap" id="contact" aria-label="Contact">
+  <div class="contact">
+    <div>
+      <h2>Jogajog</h2>
+      <p>Kono tool kaj na korle, notun feature chaile ba onno kono proshno thakle Facebook-e message koro.</p>
+    </div>
+    <div class="owner">
+      <small>Owner</small>
+      <strong>CRX Shihab</strong>
+      <a class="fb" href="https://www.facebook.com/profile.php?id=100094063186003" target="_blank" rel="noopener">Facebook-e message koro</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 MediaNest</span>
+    <span>Owner: CRX Shihab</span>
+  </div>
+</footer>
+
 <script>
+
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); kids.forEach(k => e.append(k)); return e; };
 const link = (href, text) => el('a', { href, target: '_blank', rel: 'noopener', className: 'btn', textContent: text });
