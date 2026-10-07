@@ -5,9 +5,8 @@
 
 Render deploy: Build `npm install`, Start `npm start`, env vars dashboard-e dao.
 
-## AI Image Edit (GenX models)
-- Section: `#ai-edit` (navbar-e "AI Edit")
-- 12-ta GenX model (Flux 2 Max, GPT Image 2, Nano Banana, SeedDream 4 ...), ratio: 1:1, 16:9, 9:16, 4:3, 3:4
-- Ekshathe max 5-ta chhobi upload kora jay (browser-e 1600px-e chhoto kore server-e jay)
-- API: `GET /api/ai/models`, `POST /api/ai/edit` ({model, prompt, ratio, images:[dataURL]})
-- Notun dependency: `form-data` -> `npm install` abar chalao
+## AI Image Gen + AI Image Edit (GenX models)
+- `#ai-gen`: shudhu prompt theke chhobi, shob 12 model, ratio 1:1 / 16:9 / 9:16 / 4:3 / 3:4
+- `#ai-edit`: ekshathe max 5-ta chhobi upload + prompt (Qwen Image bade 11-ta model)
+- API: `GET /api/ai/models`, `POST /api/ai/gen` ({model, prompt, ratio}), `POST /api/ai/edit` ({model, prompt, ratio, images:[dataURL]})
+- Dependency: `form-data` -> `npm install` abar chalao

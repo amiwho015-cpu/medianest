@@ -176,7 +176,7 @@ app.get('/api/waifu', wrap(async (req, res) => res.json(await hubGet('/api/waifu
 app.get('/api/flag', wrap(async (req, res) => res.json(await hubGet('/api/flaggame', {}, 15000))));
 
 
-// ---------- AI Image Edit (GenX models, multi-image) ----------
+// ---------- AI Image Gen + AI Image Edit (GenX models) ----------
 const MODELS = [
   { id: 1, name: 'Flux 2 Max', tag: '🔥', path: '/api/flux2max', supportsImage: true },
   { id: 2, name: 'GPT Image 2', tag: '🧠', path: '/api/gptimage2', supportsImage: true },
@@ -242,18 +242,19 @@ async function runModel(model, prompt, ratio, urls) {
   return { buf, type };
 }
 
-app.post('/api/ai/edit', express.json({ limit: '40mb' }), wrap(async (req, res) => {
+const aiHandler = (mode) => wrap(async (req, res) => {
   const b = req.body || {};
   const model = MODELS.find((m) => m.id === parseInt(b.model, 10));
   if (!model) return res.status(400).json({ error: 'Valid model select korun (1-12).' });
   const prompt = String(b.prompt || '').trim().slice(0, 1000);
   if (!prompt) return res.status(400).json({ error: 'Prompt likhun.' });
   const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';
-  const images = Array.isArray(b.images) ? b.images : [];
-  if (images.length > MAX_IMAGES) return res.status(400).json({ error: `Ekbare max ${MAX_IMAGES}-ta chhobi dewa jay.` });
-  if (images.length && !model.supportsImage)
-    return res.status(400).json({ error: `${model.name} shudhu text-to-image, chhobi edit kore na. Onno model nin.` });
-
+  const images = mode === 'edit' && Array.isArray(b.images) ? b.images : [];
+  if (mode === 'edit') {
+    if (!images.length) return res.status(400).json({ error: 'Komporkhe ekta chhobi upload korun.' });
+    if (images.length > MAX_IMAGES) return res.status(400).json({ error: `Ekbare max ${MAX_IMAGES}-ta chhobi dewa jay.` });
+    if (!model.supportsImage) return res.status(400).json({ error: `${model.name} chhobi edit kore na. Onno model nin.` });
+  }
   const urls = await Promise.all(images.map(uploadImage));
   let out, used = urls.length;
   try {
@@ -265,7 +266,12 @@ app.post('/api/ai/edit', express.json({ limit: '40mb' }), wrap(async (req, res) 
   }
   res.set('X-Images-Used', String(used));
   res.type(out.type).send(out.buf);
-}));
+});
+
+// Image Gen: shudhu text -> image (shob 12 model)
+app.post('/api/ai/gen', express.json({ limit: '1mb' }), aiHandler('gen'));
+// Image Edit: chhobi upload (max 5) + prompt
+app.post('/api/ai/edit', express.json({ limit: '40mb' }), aiHandler('edit'));
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.listen(process.env.PORT || 3000, () => console.log('MediaNest running'));
