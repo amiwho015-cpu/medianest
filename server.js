@@ -84,6 +84,45 @@ app.get('/api/yt/dl', wrap(async (req, res) => {
   res.json({ url: data.url, title: data.title || '' });
 }));
 
+// YouTube: shob format ekshathe (mp3 + mp4 + upstream-er onno quality), proti link tinyurl-e short kora
+function ytLinks(payload, prefix) {
+  const out = [], seen = new Set();
+  (function walk(n) {
+    if (Array.isArray(n)) return n.forEach(walk);
+    if (!n || typeof n !== 'object') return;
+    for (const k of ['url', 'link', 'download', 'downloadUrl']) {
+      const u = n[k];
+      if (typeof u === 'string' && isHttp(u) && !seen.has(u)) {
+        seen.add(u);
+        const q = [n.quality, n.qualityLabel, n.resolution, n.label, n.format, n.ext, n.bitrate && n.bitrate + 'kbps']
+          .filter((x) => x && typeof x !== 'object').map(String);
+        out.push({ label: [prefix, ...new Set(q.filter((x) => x.toLowerCase() !== prefix.toLowerCase()))].join(' '), url: u });
+        break;
+      }
+    }
+    Object.entries(n).forEach(([k, v]) => { if (v && typeof v === 'object' && !/thumb|cover|image/i.test(k)) walk(v); });
+  })(payload);
+  return out;
+}
+const shorten = async (url) => {
+  try {
+    const { data } = await axios.get('https://tinyurl.com/api-create.php', { params: { url }, timeout: 8000 });
+    return /^https?:\/\//.test(String(data)) ? String(data) : url;
+  } catch { return url; }
+};
+app.get('/api/yt/formats', wrap(async (req, res) => {
+  const url = String(req.query.url || '').trim();
+  if (!isHttp(url)) return res.status(400).json({ error: 'Valid link din.' });
+  const b = await base('xalman-hub', 'HUB_BASE');
+  const get = (ep, prefix) => axios.get(`${b}/api/${ep}?url=${encodeURIComponent(url)}`, { timeout: 60000 })
+    .then((r) => (r.data && (r.data.status || r.data.success) ? ytLinks(r.data, prefix) : [])).catch(() => []);
+  const [audio, video] = await Promise.all([get('ytmp3', 'MP3'), get('ytdl', 'MP4')]);
+  const all = [...audio, ...video];
+  if (!all.length) return res.status(404).json({ error: 'Download hoyni.' });
+  const formats = await Promise.all(all.slice(0, 12).map(async (f) => ({ label: f.label, url: await shorten(f.url) })));
+  res.json({ formats });
+}));
+
 // Namaz times (aladhan)
 app.get('/api/namaz', wrap(async (req, res) => {
   const city = String(req.query.city || 'Dhaka').slice(0, 60);
@@ -194,7 +233,11 @@ const MODELS = [
   { id: 11, name: 'Qwen Image', tag: '🌀', path: '/api/qwen-image', supportsImage: false },
   { id: 12, name: 'SeedDream 4', tag: '🌱', path: '/api/seedream4', supportsImage: true },
   // Midjourney: alada API key lage (env: MIDJOURNEY_KEY). Base URL na dile hub-er upor cholbe.
-  { id: 13, name: 'Midjourney', tag: '🎨', path: process.env.MIDJOURNEY_PATH || '/api/midjourney', supportsImage: false, keyEnv: 'MIDJOURNEY_KEY', keyDefault: '1005275961e56ce3f3b9c240904a09c37f95b4cb16d7bf34b9032269875a7334', baseEnv: 'MIDJOURNEY_BASE' }
+  { id: 13, name: 'Midjourney', tag: '🎨', path: process.env.MIDJOURNEY_PATH || '/api/midjourney', supportsImage: false, keyEnv: 'MIDJOURNEY_KEY', keyDefault: '1005275961e56ce3f3b9c240904a09c37f95b4cb16d7bf34b9032269875a7334', baseEnv: 'MIDJOURNEY_BASE' },
+  // Pollinations public image models — no upstream key required for the basic endpoint.
+  { id: 14, name: 'Pollinations Flux', tag: '🌸', pollinationsModel: 'flux', supportsImage: false },
+  { id: 15, name: 'Pollinations Z-Image', tag: '🎨', pollinationsModel: 'zimage', supportsImage: false },
+  { id: 16, name: 'Pollinations Klein', tag: '⚡', pollinationsModel: 'klein', supportsImage: false }
 ];
 const RATIOS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
 const MAX_IMAGES = 5;
@@ -229,6 +272,27 @@ async function uploadImage(dataUrl, i) {
 }
 
 async function runModel(model, prompt, ratio, urls) {
+  // Pollinations: simple public text-to-image endpoint.
+  if (model.pollinationsModel) {
+    if (urls.length) { const e = new Error(`${model.name} shudhu text-to-image kore.`); e.upstream = false; throw e; }
+    const dims = { '1:1':[1024,1024], '16:9':[1344,768], '9:16':[768,1344], '4:3':[1152,864], '3:4':[864,1152] }[ratio] || [1024,1024];
+    const q = new URLSearchParams({ model: model.pollinationsModel, width: String(dims[0]), height: String(dims[1]), nologo: 'true' });
+    const key = process.env.POLLINATIONS_API_KEY;
+    const headers = { 'User-Agent': 'MediaNest/1.0' };
+    if (key) headers.Authorization = `Bearer ${key}`;
+    const r = await axios.get(`https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${q}`, {
+      headers, timeout: 180000, responseType: 'arraybuffer', validateStatus: () => true
+    });
+    const type = String(r.headers['content-type'] || 'image/png');
+    const buf = Buffer.from(r.data);
+    if (r.status >= 400 || !type.startsWith('image/')) {
+      let msg = `HTTP ${r.status}`;
+      try { const j = JSON.parse(buf.toString('utf8')); msg = j.message || j.error || msg; } catch {}
+      const e = new Error(`${model.name} failed: ${msg}`); e.upstream = true; throw e;
+    }
+    return { buf, type };
+  }
+
   const params = new URLSearchParams();
   params.set('prompt', prompt);
   params.set('ratio', ratio);
@@ -267,7 +331,7 @@ async function runModel(model, prompt, ratio, urls) {
 const aiHandler = (mode) => wrap(async (req, res) => {
   const b = req.body || {};
   const model = MODELS.find((m) => m.id === parseInt(b.model, 10));
-  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-13).' });
+  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-16).' });
   const prompt = String(b.prompt || '').trim().slice(0, 1000);
   if (!prompt) return res.status(400).json({ error: 'Prompt likhun.' });
   const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';
@@ -390,7 +454,7 @@ async function previewJpeg(svg, fallbackBuf) {
 app.post('/api/ai/pack', express.json({ limit: '1mb' }), wrap(async (req, res) => {
   const b = req.body || {};
   const model = MODELS.find((m) => m.id === parseInt(b.model, 10));
-  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-13).' });
+  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-16).' });
   const prompt = String(b.prompt || '').trim().slice(0, 600);
   if (!prompt) return res.status(400).json({ error: 'Chhobir idea/prompt likhun.' });
   const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';
@@ -422,45 +486,4 @@ app.post('/api/ai/pack', express.json({ limit: '1mb' }), wrap(async (req, res) =
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
-// ---- AI Video Gen (fal.ai queue API) ----
-// Key: Render env FAL_KEY, na hole nicher FAL_KEY_DEFAULT-e boshao
-const FAL_KEY_DEFAULT = '';
-const VIDEO_MODELS = [
-  { id: 'longcat', name: 'LongCat Video 480p', path: 'fal-ai/longcat-video/text-to-video/480p' },
-  { id: 'hunyuan', name: 'HunyuanVideo', path: 'fal-ai/hunyuan-video' }
-];
-const videoJobs = new Map();
-const falHeaders = () => {
-  const k = process.env.FAL_KEY || FAL_KEY_DEFAULT;
-  if (!k) { const e = new Error('FAL_KEY set kora nai (Render env ba server.js-er FAL_KEY_DEFAULT-e dao).'); throw e; }
-  return { Authorization: `Key ${k}`, 'Content-Type': 'application/json' };
-};
-app.get('/api/video-gen/models', (req, res) => res.json({ models: VIDEO_MODELS.map(({ id, name }) => ({ id, name })) }));
-app.post('/api/video-gen/start', express.json({ limit: '100kb' }), wrap(async (req, res) => {
-  const m = VIDEO_MODELS.find((x) => x.id === req.body.model);
-  const prompt = String(req.body.prompt || '').trim().slice(0, 1000);
-  if (!m) return res.status(400).json({ error: 'Valid video model select korun.' });
-  if (!prompt) return res.status(400).json({ error: 'Prompt likhun.' });
-  const r = await axios.post(`https://queue.fal.run/${m.path}`, { prompt }, { headers: falHeaders(), timeout: 30000, validateStatus: () => true });
-  if (r.status >= 400 || !r.data || !r.data.request_id) {
-    const msg = (r.data && (r.data.detail || r.data.message || r.data.error)) || `HTTP ${r.status}`;
-    throw new Error(`${m.name} failed: ${typeof msg === 'string' ? msg : JSON.stringify(msg).slice(0, 150)}`);
-  }
-  const id = require('crypto').randomBytes(8).toString('hex');
-  videoJobs.set(id, { statusUrl: r.data.status_url, responseUrl: r.data.response_url, t: Date.now() });
-  for (const [k, v] of videoJobs) if (Date.now() - v.t > 3600000) videoJobs.delete(k);
-  res.json({ id });
-}));
-app.get('/api/video-gen/status', wrap(async (req, res) => {
-  const job = videoJobs.get(String(req.query.id || ''));
-  if (!job) return res.status(404).json({ error: 'Job paoa jayni (server restart hole hariye jay). Abar chesta koro.' });
-  const st = await axios.get(job.statusUrl, { headers: falHeaders(), timeout: 20000, validateStatus: () => true });
-  const status = st.data && st.data.status;
-  if (status !== 'COMPLETED') return res.json({ status: status || 'IN_QUEUE', position: st.data && st.data.queue_position });
-  const out = await axios.get(job.responseUrl, { headers: falHeaders(), timeout: 30000, validateStatus: () => true });
-  const url = out.data && out.data.video && out.data.video.url;
-  if (out.status >= 400 || !url) throw new Error('Video toiri hoyni: ' + ((out.data && (out.data.detail || out.data.error)) ? JSON.stringify(out.data.detail || out.data.error).slice(0, 150) : 'HTTP ' + out.status));
-  res.json({ status: 'COMPLETED', url });
-}));
-
 app.listen(process.env.PORT || 3000, () => console.log('MediaNest running'));
