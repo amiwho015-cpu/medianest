@@ -422,4 +422,45 @@ app.post('/api/ai/pack', express.json({ limit: '1mb' }), wrap(async (req, res) =
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
+// ---- AI Video Gen (fal.ai queue API) ----
+// Key: Render env FAL_KEY, na hole nicher FAL_KEY_DEFAULT-e boshao
+const FAL_KEY_DEFAULT = '';
+const VIDEO_MODELS = [
+  { id: 'longcat', name: 'LongCat Video 480p', path: 'fal-ai/longcat-video/text-to-video/480p' },
+  { id: 'hunyuan', name: 'HunyuanVideo', path: 'fal-ai/hunyuan-video' }
+];
+const videoJobs = new Map();
+const falHeaders = () => {
+  const k = process.env.FAL_KEY || FAL_KEY_DEFAULT;
+  if (!k) { const e = new Error('FAL_KEY set kora nai (Render env ba server.js-er FAL_KEY_DEFAULT-e dao).'); throw e; }
+  return { Authorization: `Key ${k}`, 'Content-Type': 'application/json' };
+};
+app.get('/api/video-gen/models', (req, res) => res.json({ models: VIDEO_MODELS.map(({ id, name }) => ({ id, name })) }));
+app.post('/api/video-gen/start', express.json({ limit: '100kb' }), wrap(async (req, res) => {
+  const m = VIDEO_MODELS.find((x) => x.id === req.body.model);
+  const prompt = String(req.body.prompt || '').trim().slice(0, 1000);
+  if (!m) return res.status(400).json({ error: 'Valid video model select korun.' });
+  if (!prompt) return res.status(400).json({ error: 'Prompt likhun.' });
+  const r = await axios.post(`https://queue.fal.run/${m.path}`, { prompt }, { headers: falHeaders(), timeout: 30000, validateStatus: () => true });
+  if (r.status >= 400 || !r.data || !r.data.request_id) {
+    const msg = (r.data && (r.data.detail || r.data.message || r.data.error)) || `HTTP ${r.status}`;
+    throw new Error(`${m.name} failed: ${typeof msg === 'string' ? msg : JSON.stringify(msg).slice(0, 150)}`);
+  }
+  const id = require('crypto').randomBytes(8).toString('hex');
+  videoJobs.set(id, { statusUrl: r.data.status_url, responseUrl: r.data.response_url, t: Date.now() });
+  for (const [k, v] of videoJobs) if (Date.now() - v.t > 3600000) videoJobs.delete(k);
+  res.json({ id });
+}));
+app.get('/api/video-gen/status', wrap(async (req, res) => {
+  const job = videoJobs.get(String(req.query.id || ''));
+  if (!job) return res.status(404).json({ error: 'Job paoa jayni (server restart hole hariye jay). Abar chesta koro.' });
+  const st = await axios.get(job.statusUrl, { headers: falHeaders(), timeout: 20000, validateStatus: () => true });
+  const status = st.data && st.data.status;
+  if (status !== 'COMPLETED') return res.json({ status: status || 'IN_QUEUE', position: st.data && st.data.queue_position });
+  const out = await axios.get(job.responseUrl, { headers: falHeaders(), timeout: 30000, validateStatus: () => true });
+  const url = out.data && out.data.video && out.data.video.url;
+  if (out.status >= 400 || !url) throw new Error('Video toiri hoyni: ' + ((out.data && (out.data.detail || out.data.error)) ? JSON.stringify(out.data.detail || out.data.error).slice(0, 150) : 'HTTP ' + out.status));
+  res.json({ status: 'COMPLETED', url });
+}));
+
 app.listen(process.env.PORT || 3000, () => console.log('MediaNest running'));
