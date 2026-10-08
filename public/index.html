@@ -110,13 +110,13 @@ textarea:focus{outline:2px solid rgba(0,229,255,.6);outline-offset:2px}
   <div class="wrap nav">
     <a class="logo" href="#home"><span class="logo-dot"></span>MediaNest</a>
     <nav class="links" aria-label="Main">
-      <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#ai-edit">AI Edit</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
+      <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
     </nav>
     <a class="nav-cta" href="#contact">Hire Me</a>
     <button class="menu" id="menuBtn" aria-label="Menu">☰</button>
   </div>
   <div class="wrap mobile-links" id="mobileLinks">
-    <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#ai-edit">AI Edit</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
+    <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
   </div>
 </header>
 
@@ -201,6 +201,76 @@ textarea:focus{outline:2px solid rgba(0,229,255,.6);outline-offset:2px}
       <div id="aiOut" aria-live="polite"></div>
     </div>
     <p class="note">Edit-er jonno chhobi temporary public link-e (catbox) upload hoy, tai private chhobi diyo na.</p>
+  </div>
+</section>
+
+<section id="upscale">
+  <div class="wrap">
+    <div class="section-head"><div><div class="kicker">New</div><h2>AI Upscale (Adobe Stock)</h2></div><p class="section-desc">Chhobi AI diye upscale hoye Adobe Stock-er upojogi JPEG hoye ashe: minimum 4MP, 300 DPI, 45MB-er niche.</p></div>
+    <div class="glass toolbox">
+      <div class="ai-row">
+        <select id="upEngine" aria-label="Upscale engine"><option value="1">Engine 1 (4K AI)</option><option value="2">Engine 2 (4K Pro)</option></select>
+        <select id="upTarget" aria-label="Output size"><option value="min">Adobe minimum (4MP+)</option><option value="large">Large (12MP+)</option><option value="xl">Extra large (24MP+)</option></select>
+      </div>
+      <div class="ai-pick">
+        <label class="upload">＋ Select Image<input id="upFile" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+        <span class="note" id="upName">Max 8MB (PNG / JPG / WEBP)</span>
+      </div>
+      <div class="ai-thumbs" id="upThumb"></div>
+      <div class="ai-actions"><button class="go" id="upGo" type="button">Upscale</button></div>
+      <div id="upOut" aria-live="polite"></div>
+    </div>
+    <p class="note">Chhobi temporary public link-e (catbox) upload hoy, tai private chhobi diyo na. Adobe-e AI-generated chhobi upload korle "generative AI" hishebe mark korte hoy.</p>
+  </div>
+</section>
+
+<section id="vector">
+  <div class="wrap">
+    <div class="section-head"><div><div class="kicker">New</div><h2>Image to Vector</h2></div><p class="section-desc">Chhobi auto-trace hoye scalable SVG vector hoye jay. Logo, icon ba flat illustration-e shobcheye bhalo kaj kore.</p></div>
+    <div class="glass toolbox">
+      <div class="ai-row">
+        <select id="vecStyle" aria-label="Vector style">
+          <option value="illustration">Illustration (24 colors)</option>
+          <option value="logo">Logo / Icon (8 colors)</option>
+          <option value="detailed">Detailed (48 colors, slow)</option>
+          <option value="bw">Black &amp; White</option>
+        </select>
+      </div>
+      <div class="ai-pick">
+        <label class="upload">＋ Select Image<input id="vecFile" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+        <span class="note" id="vecName">Max 8MB (PNG / JPG / WEBP)</span>
+      </div>
+      <div class="ai-thumbs" id="vecThumb"></div>
+      <label class="note"><input type="checkbox" id="vecBg"> Shada background muche dao (transparent)</label>
+      <div class="ai-actions"><button class="go" id="vecGo" type="button">Make Vector</button></div>
+      <div id="vecOut" aria-live="polite"></div>
+    </div>
+    <p class="note">Adobe Stock-e vector shadharonoto AI/EPS format-e dite hoy. SVG ta Illustrator ba Inkscape (free)-e khule EPS/AI hishebe save koro. Auto-trace kora jhapsha chhobi Adobe reject korte pare, tai shaf, shohoj grafik dao ar upload-er age Adobe-er current rule check koro.</p>
+  </div>
+</section>
+
+<section id="pack">
+  <div class="wrap">
+    <div class="section-head"><div><div class="kicker">One-Click</div><h2>Adobe Stock Vector Pack</h2></div><p class="section-desc">Ekta idea likho, ekbar button chap: AI image → vector (EPS + SVG) → JPG preview → SEO title &amp; keywords → upload package, shob ek jaygay.</p></div>
+    <div class="glass toolbox">
+      <div class="ai-row">
+        <select id="packModel" aria-label="AI model"></select>
+        <select id="packRatio" aria-label="Ratio"></select>
+        <select id="packStyle" aria-label="Vector style">
+          <option value="illustration">Illustration (24 colors)</option>
+          <option value="logo">Logo / Icon (8 colors)</option>
+          <option value="detailed">Detailed (48 colors, slow)</option>
+          <option value="bw">Black &amp; White</option>
+        </select>
+      </div>
+      <textarea id="packPrompt" maxlength="600" placeholder="Chhobir idea likho (jemon: cute orange cat sitting on a moon)" aria-label="Idea"></textarea>
+      <input id="packExtra" type="text" maxlength="200" placeholder="Extra keywords (optional, comma diye: kids, sticker, sleep)" aria-label="Extra keywords" style="margin-top:10px">
+      <label class="note" style="display:block;margin-top:10px"><input type="checkbox" id="packVf" checked> Vector-friendly prompt (flat, shaf shape, no text, shada background)</label>
+      <label class="note" style="display:block"><input type="checkbox" id="packBg"> Shada background muche dao (transparent)</label>
+      <div class="ai-actions"><button class="go" id="packGo" type="button">Create Adobe Pack</button></div>
+      <div id="packOut" aria-live="polite"></div>
+    </div>
+    <p class="note">Adobe account-er login/password ei site-e dewa nirapod na, tai upload ta tumi Adobe Stock portal-e korbe; ekhane file, title, keywords, CSV ar checklist ready hoye jay. EPS ta auto-toiri, Illustrator/Inkscape-e ekbar khule dekhe nio. SEO text auto-generate, upload-er age title/keywords edit kore nio: chhobir sathe na mille ba brand/artist naam thakle Adobe reject korte pare. AI-generated hole portal-e "generative AI" mark korte hoy.</p>
   </div>
 </section>
 
@@ -377,6 +447,117 @@ $('aiGo').onclick=async()=>{
   [$('genRatio'),$('aiRatio')].forEach(s=>s.replaceChildren(...d.ratios.map(r=>el('option',{value:r,textContent:'Ratio '+r}))));
  }catch(e){aiErr($('genOut'),'Model list load hoyni.')}
  aiRender();
+})();
+/* AI Upscale (Adobe Stock) */
+const up={data:null};
+$('upFile').onchange=()=>{
+ const f=$('upFile').files[0];$('upFile').value='';if(!f)return;
+ if(f.size>8*1024*1024)return aiErr($('upOut'),'Chhobi 8MB-er choto hote hobe.');
+ const rd=new FileReader();
+ rd.onload=()=>{up.data=rd.result;$('upThumb').replaceChildren(el('div',{className:'thumb'},el('img',{src:up.data,alt:'Selected image'})));$('upName').textContent=f.name;$('upOut').replaceChildren()};
+ rd.onerror=()=>aiErr($('upOut'),'Chhobi pora jayni.');
+ rd.readAsDataURL(f);
+};
+$('upGo').onclick=async()=>{
+ const out=$('upOut');
+ if(!up.data)return aiErr(out,'Age ekta chhobi select koro.');
+ $('upGo').disabled=true;out.replaceChildren('Upscale hocche... (1-3 minute lagte pare)');
+ try{
+  const r=await fetch('/api/ai/upscale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:up.data,engine:+$('upEngine').value,target:$('upTarget').value})});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Kichu ekta bhul hoyeche. Abar chesta koro.')}
+  const w=+r.headers.get('X-Width'),h=+r.headers.get('X-Height'),sz=+r.headers.get('X-Size'),ai=+r.headers.get('X-AI');
+  const u=URL.createObjectURL(await r.blob()),a=link(u,'Save JPEG');a.download='adobe-ready.jpg';
+  out.replaceChildren(el('img',{src:u,alt:'Upscaled image',className:'out-media'}),a,
+   el('p',{className:'note',textContent:`${w}×${h}px · ${(w*h/1e6).toFixed(1)}MP · ${(sz/1048576).toFixed(1)}MB · JPEG 300 DPI`+(ai?` · AI engine ${ai}`:'')}),
+   ...(ai?[]:[el('p',{className:'err',textContent:'AI upscale engine kaj kore ni, shudhu normal resize hoyeche. Pore abar chesta koro.'})]));
+ }catch(e){aiErr(out,e.message)}
+ $('upGo').disabled=false;
+};
+/* Image to Vector (SVG) */
+const vec={data:null};
+$('vecFile').onchange=()=>{
+ const f=$('vecFile').files[0];$('vecFile').value='';if(!f)return;
+ if(f.size>8*1024*1024)return aiErr($('vecOut'),'Chhobi 8MB-er choto hote hobe.');
+ const rd=new FileReader();
+ rd.onload=()=>{vec.data=rd.result;$('vecThumb').replaceChildren(el('div',{className:'thumb'},el('img',{src:vec.data,alt:'Selected image'})));$('vecName').textContent=f.name;$('vecOut').replaceChildren()};
+ rd.onerror=()=>aiErr($('vecOut'),'Chhobi pora jayni.');
+ rd.readAsDataURL(f);
+};
+$('vecGo').onclick=async()=>{
+ const out=$('vecOut');
+ if(!vec.data)return aiErr(out,'Age ekta chhobi select koro.');
+ $('vecGo').disabled=true;out.replaceChildren('Vector hocche... (kichu second theke 1 minute)');
+ try{
+  const r=await fetch('/api/ai/vector',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:vec.data,style:$('vecStyle').value,removeBg:$('vecBg').checked})});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Kichu ekta bhul hoyeche. Abar chesta koro.')}
+  const n=+r.headers.get('X-Paths'),sz=+r.headers.get('X-Size');
+  const u=URL.createObjectURL(await r.blob()),a=link(u,'Save SVG');a.download='vector.svg';
+  out.replaceChildren(el('img',{src:u,alt:'Vector preview',className:'out-media'}),a,el('p',{className:'note',textContent:`SVG · ${n} paths · ${(sz/1024).toFixed(0)}KB`}));
+ }catch(e){aiErr(out,e.message)}
+ $('vecGo').disabled=false;
+};
+/* Adobe Stock Vector Pack (one click) */
+const pack={d:null,base:''};
+const packSlug=t=>(String(t).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'vector')+'-'+Math.random().toString(36).slice(2,6);
+const b64Blob=(b64,type)=>{const s=atob(b64),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return new Blob([u],{type})};
+const csvCell=v=>'"'+String(v).replace(/"/g,'""')+'"';
+const packKw=()=>$('packKw').value.split(',').map(s=>s.trim()).filter(Boolean).slice(0,49);
+function packSave(name,blob){const a=el('a',{href:URL.createObjectURL(blob),download:name});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+function packChecklist(b){return ['Adobe Stock upload checklist','',
+ '1. Adobe Stock Contributor portal-e login koro -> Upload.',
+ `2. ${b}.eps upload koro (eta na khulle ${b}.svg Illustrator/Inkscape-e khule EPS ba AI save koro). Preview hishebe ${b}.jpg rakho.`,
+ '3. AI diye banano hole "Created using generative AI" tick dao.',
+ '4. Title ar keywords paste koro (ba metadata.csv import koro, column-gulo Adobe-er current template-er sathe milie nio).',
+ '5. Title/keyword-e brand, artist ba trademark naam rakho na; shob keyword chhobir sathe milte hobe.',
+ '6. Category select kore Submit koro.'].join('\r\n')}
+function packFiles(){
+ const b=pack.base,d=pack.d,title=$('packTitle').value.trim(),kw=packKw();
+ return [[b+'.eps',new Blob([d.eps],{type:'application/postscript'})],[b+'.svg',new Blob([d.svg],{type:'image/svg+xml'})],[b+'.jpg',b64Blob(d.jpg,'image/jpeg')],
+  ['metadata.csv',new Blob(['Filename,Title,Keywords,Category,Releases\r\n'+[b+'.eps',title,kw.join(', '),'',''].map(csvCell).join(',')+'\r\n'],{type:'text/csv'})],
+  ['keywords.txt',new Blob([title+'\r\n\r\n'+kw.join(', ')+'\r\n'],{type:'text/plain'})],
+  ['upload-checklist.txt',new Blob([packChecklist(b)],{type:'text/plain'})]];
+}
+function loadJSZip(){return window.JSZip?Promise.resolve(window.JSZip):new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onload=()=>ok(window.JSZip);s.onerror=()=>no(new Error('ZIP library load hoyni, file gulo alada alada save koro.'));document.head.append(s)})}
+async function packCopy(text,btn){try{await navigator.clipboard.writeText(text);const t=btn.textContent;btn.textContent='Copied ✓';setTimeout(()=>btn.textContent=t,1500)}catch{aiErr($('packMsg'),'Copy hoyni, nijer hate select kore copy koro.')}}
+function packCounts(){$('packTCount').textContent=$('packTitle').value.length+'/200';$('packKCount').textContent=packKw().length+'/49 keywords'}
+function packRender(d){
+ pack.d=d;pack.base=packSlug(d.title);
+ const prev=URL.createObjectURL(b64Blob(d.jpg,'image/jpeg'));
+ const btn=(t,fn)=>el('button',{type:'button',className:'btn',textContent:t,onclick:fn});
+ const msg=el('div',{id:'packMsg'});
+ const title=el('input',{id:'packTitle',type:'text',maxLength:200,value:d.title,oninput:packCounts,'aria-label':'Title'});
+ const kw=el('textarea',{id:'packKw',rows:4,value:d.keywords.join(', '),oninput:packCounts,'aria-label':'Keywords'});
+ const files=()=>{const m=Object.fromEntries(packFiles());return m};
+ const one=(n)=>()=>{const f=packFiles().find(x=>x[0].endsWith(n));packSave(f[0],f[1])};
+ $('packOut').replaceChildren(
+  el('img',{src:prev,alt:'Vector preview',className:'out-media'}),
+  el('p',{className:'note',textContent:`${d.paths} vector paths · EPS ${(d.eps.length/1048576).toFixed(1)}MB · SVG ${(d.svg.length/1048576).toFixed(1)}MB`}),
+  el('p',{className:'note',textContent:'Title (edit korte paro):'}),title,el('span',{className:'note',id:'packTCount'}),
+  el('p',{className:'note',textContent:'Keywords (comma diye, max 49, edit korte paro):'}),kw,el('span',{className:'note',id:'packKCount'}),
+  el('div',{className:'ai-actions'},
+   btn('Download ZIP (shob)',async()=>{try{const Z=await loadJSZip(),z=new Z();packFiles().forEach(([n,b])=>z.file(n,b));packSave(pack.base+'-adobe-pack.zip',await z.generateAsync({type:'blob'}))}catch(e){aiErr($('packMsg'),e.message)}}),
+   btn('Save EPS',one('.eps')),btn('Save SVG',one('.svg')),btn('Save JPG preview',one('.jpg')),btn('Save CSV',one('.csv'))),
+  el('div',{className:'ai-actions'},
+   btn('Copy title',function(){packCopy($('packTitle').value,this)}),btn('Copy keywords',function(){packCopy(packKw().join(', '),this)})),
+  msg);
+ packCounts();
+}
+$('packGo').onclick=async()=>{
+ const out=$('packOut'),prompt=$('packPrompt').value.trim();
+ if(!prompt)return aiErr(out,'Chhobir idea likho.');
+ $('packGo').disabled=true;out.replaceChildren('Kaj hocche: AI image → vector → SEO → package... (1-3 minute lagte pare, page bondho koro na)');
+ try{
+  const r=await fetch('/api/ai/pack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,model:+$('packModel').value,ratio:$('packRatio').value,style:$('packStyle').value,vectorFriendly:$('packVf').checked,removeBg:$('packBg').checked,extraKeywords:$('packExtra').value})});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Kichu ekta bhul hoyeche. Abar chesta koro.')}
+  packRender(await r.json());
+ }catch(e){aiErr(out,e.message)}
+ $('packGo').disabled=false;
+};
+(async()=>{
+ try{const d=await (await fetch('/api/ai/models')).json();
+  $('packModel').replaceChildren(...d.models.map(aiOpt));
+  $('packRatio').replaceChildren(...d.ratios.map(r=>el('option',{value:r,textContent:'Ratio '+r})));
+ }catch(e){aiErr($('packOut'),'Model list load hoyni.')}
 })();
 </script>
 </body>
