@@ -4,6 +4,9 @@ const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const FormData = require('form-data');
+const sharp = require('sharp');
+const ImageTracer = require('imagetracerjs');
+const VP = require('./lib/vectorpack');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -272,6 +275,129 @@ const aiHandler = (mode) => wrap(async (req, res) => {
 app.post('/api/ai/gen', express.json({ limit: '1mb' }), aiHandler('gen'));
 // Image Edit: chhobi upload (max 5) + prompt
 app.post('/api/ai/edit', express.json({ limit: '40mb' }), aiHandler('edit'));
+
+// ---------- AI Upscale (Adobe Stock ready JPEG) ----------
+const UP_TARGETS = { min: 4.2, large: 12, xl: 24 }; // megapixel (Adobe Stock minimum 4MP)
+const ADOBE_MAX_MP = 99, ADOBE_MAX_BYTES = 44 * 1024 * 1024;
+
+async function aiUpscale(engine, url) {
+  const base = await hub();
+  const opt = { timeout: 300000, responseType: 'arraybuffer', validateStatus: () => true };
+  const r = engine === 2
+    ? await axios.get(`${base}/api/image-upscale`, { ...opt, params: { image: url } })
+    : await axios.post(`${base}/api/upscale`, { imageUrl: url }, opt);
+  if (r.status >= 400 || !String(r.headers['content-type'] || '').startsWith('image/'))
+    throw new Error(`Upscale engine ${engine} failed (HTTP ${r.status}).`);
+  return Buffer.from(r.data);
+}
+
+// kom hole Lanczos diye boRo kore, 100MP-er beshi hole chhoto kore, 45MB-er niche JPEG banay
+async function toAdobeJpeg(buf, targetMP) {
+  const meta = await sharp(buf).metadata();
+  let w = meta.width, h = meta.height;
+  if (meta.orientation >= 5) [w, h] = [h, w];
+  if (!w || !h) throw new Error('Chhobi pora jayni.');
+  const mp = (w * h) / 1e6;
+  let tw = w, th = h;
+  if (mp < targetMP) { const k = Math.sqrt((targetMP * 1e6) / (w * h)) * 1.005; tw = Math.ceil(w * k); th = Math.ceil(h * k); }
+  else if (mp > ADOBE_MAX_MP) { const k = Math.sqrt((ADOBE_MAX_MP * 1e6) / (w * h)); tw = Math.floor(w * k); th = Math.floor(h * k); }
+  const build = (q) => {
+    let p = sharp(buf, { limitInputPixels: 268402689 }).rotate().flatten({ background: '#ffffff' });
+    if (tw !== w || th !== h) p = p.resize(tw, th, { kernel: 'lanczos3' }).sharpen({ sigma: 0.6 });
+    return p.jpeg({ quality: q, mozjpeg: true, chromaSubsampling: '4:4:4' }).withMetadata({ density: 300 }).toBuffer();
+  };
+  let out;
+  for (const q of [95, 92, 88, 84, 80, 75]) { out = await build(q); if (out.length <= ADOBE_MAX_BYTES) break; }
+  return { buf: out, width: tw, height: th };
+}
+
+app.post('/api/ai/upscale', express.json({ limit: '15mb' }), wrap(async (req, res) => {
+  const b = req.body || {};
+  const engine = parseInt(b.engine, 10) === 2 ? 2 : 1;
+  const target = UP_TARGETS[b.target] || UP_TARGETS.min;
+  const url = await uploadImage(b.image, 0);
+  let src = null, ai = 0;
+  for (const e of [engine, engine === 1 ? 2 : 1]) {
+    try { src = await aiUpscale(e, url); ai = e; break; } catch { /* onno engine try */ }
+  }
+  if (!src) src = Buffer.from(String(b.image).split(',')[1], 'base64'); // AI na hole shudhu normal resize
+  const out = await toAdobeJpeg(src, target);
+  res.set({ 'X-AI': String(ai), 'X-Width': String(out.width), 'X-Height': String(out.height), 'X-Size': String(out.buf.length) });
+  res.type('image/jpeg').send(out.buf);
+}));
+
+// ---------- Image -> Vector (SVG) ----------
+const BW_PAL = [{ r: 0, g: 0, b: 0, a: 255 }, { r: 255, g: 255, b: 255, a: 255 }];
+const VEC_STYLES = {
+  logo: { numberofcolors: 8, pathomit: 16, ltres: 1, qtres: 1, blurradius: 0, roundcoords: 2, viewbox: true, maxSide: 1200 },
+  illustration: { numberofcolors: 24, pathomit: 8, ltres: 1, qtres: 1, blurradius: 1, blurdelta: 20, roundcoords: 2, viewbox: true, maxSide: 1200 },
+  detailed: { numberofcolors: 48, pathomit: 4, ltres: 0.5, qtres: 0.5, blurradius: 0, roundcoords: 2, viewbox: true, maxSide: 1000 },
+  bw: { numberofcolors: 2, colorquantcycles: 1, pal: BW_PAL, pathomit: 12, ltres: 1, qtres: 1, roundcoords: 2, viewbox: true, maxSide: 1400 }
+};
+
+// chhobi buffer -> SVG (shared: /api/ai/vector ar /api/ai/pack)
+async function traceToSvg(buf, styleKey, removeBg) {
+  const { maxSide, ...opts } = VEC_STYLES[styleKey] || VEC_STYLES.illustration;
+  const { data, info } = await sharp(buf, { limitInputPixels: 268402689 })
+    .rotate().flatten({ background: '#ffffff' })
+    .resize(maxSide, maxSide, { fit: 'inside', withoutEnlargement: true })
+    .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let svg = ImageTracer.imagedataToSVG({ width: info.width, height: info.height, data: new Uint8ClampedArray(data) }, opts);
+  if (removeBg) // shada-proti path muche transparent background
+    svg = svg.replace(/<path[^>]*fill="rgb\((\d+),(\d+),(\d+)\)"[^>]*\/>/g, (m, r, g, bl) => (+r >= 245 && +g >= 245 && +bl >= 245 ? '' : m));
+  const paths = (svg.match(/<path /g) || []).length;
+  if (!paths) throw new Error('Vector banano jayni. Onno style ba bhalo chhobi dao.');
+  return { svg, paths };
+}
+
+app.post('/api/ai/vector', express.json({ limit: '15mb' }), wrap(async (req, res) => {
+  const b = req.body || {};
+  const s = String(b.image || '');
+  const comma = s.indexOf(',');
+  if (comma < 0 || !/^data:image\/(png|jpe?g|webp|gif);base64$/i.test(s.slice(0, comma)))
+    return res.status(400).json({ error: 'Valid chhobi dao (PNG/JPG/WEBP).' });
+  const buf = Buffer.from(s.slice(comma + 1), 'base64');
+  if (!buf.length || buf.length > MAX_IMAGE_BYTES) return res.status(400).json({ error: 'Chhobi khub boro (max 8MB).' });
+  const { svg, paths } = await traceToSvg(buf, b.style, !!b.removeBg);
+  const out = '<?xml version="1.0" encoding="UTF-8"?>\n' + svg;
+  res.set({ 'X-Paths': String(paths), 'X-Size': String(Buffer.byteLength(out)) });
+  res.type('image/svg+xml').send(out);
+}));
+
+// ---------- Adobe Stock Pack: AI image -> vector (SVG + EPS) -> JPG preview -> SEO ----------
+async function previewJpeg(svg, fallbackBuf) {
+  try {
+    const { w, h } = VP.svgSize(svg);
+    const k = Math.max(2800 / Math.max(w, h), Math.sqrt(4.2e6 / (w * h))); // preview >= ~4MP
+    const sized = svg.replace('<svg ', `<svg width="${Math.ceil(w * k)}" height="${Math.ceil(h * k)}" `);
+    return await sharp(Buffer.from(sized)).flatten({ background: '#ffffff' })
+      .jpeg({ quality: 92, mozjpeg: true }).withMetadata({ density: 300 }).toBuffer();
+  } catch {
+    return sharp(fallbackBuf).flatten({ background: '#ffffff' }).jpeg({ quality: 92 }).toBuffer();
+  }
+}
+
+app.post('/api/ai/pack', express.json({ limit: '1mb' }), wrap(async (req, res) => {
+  const b = req.body || {};
+  const model = MODELS.find((m) => m.id === parseInt(b.model, 10));
+  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-12).' });
+  const prompt = String(b.prompt || '').trim().slice(0, 600);
+  if (!prompt) return res.status(400).json({ error: 'Chhobir idea/prompt likhun.' });
+  const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';
+  const style = VEC_STYLES[b.style] ? b.style : 'illustration';
+  const removeBg = !!b.removeBg;
+
+  const gen = await runModel(model, VP.buildPrompt(prompt, style, b.vectorFriendly !== false), ratio, []);
+  const { svg, paths } = await traceToSvg(gen.buf, style, removeBg);
+  const seo = VP.makeSeo(prompt, style, b.extraKeywords, removeBg);
+  const eps = VP.svgToEps(svg, seo.title);
+  const jpg = await previewJpeg(svg, gen.buf);
+  res.json({
+    title: seo.title, keywords: seo.keywords, paths,
+    svg: '<?xml version="1.0" encoding="UTF-8"?>\n' + svg,
+    eps: eps.eps, jpg: jpg.toString('base64')
+  });
+}));
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.listen(process.env.PORT || 3000, () => console.log('MediaNest running'));
