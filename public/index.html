@@ -117,13 +117,13 @@ textarea:focus{outline:2px solid rgba(0,229,255,.6);outline-offset:2px}
   <div class="wrap nav">
     <a class="logo" href="#home"><span class="logo-dot"></span>MediaNest</a>
     <nav class="links" aria-label="Main">
-      <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
+      <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#video-gen">Video</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
     </nav>
     <a class="nav-cta" href="#contact">Hire Me</a>
     <button class="menu" id="menuBtn" aria-label="Menu">☰</button>
   </div>
   <div class="wrap mobile-links" id="mobileLinks">
-    <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
+    <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#video-gen">Video</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
   </div>
 </header>
 
@@ -189,6 +189,18 @@ textarea:focus{outline:2px solid rgba(0,229,255,.6);outline-offset:2px}
       <textarea id="genPrompt" maxlength="1000" placeholder="Kemon chhobi chao likho (jemon: neon-lit rainy Dhaka street, cinematic)" aria-label="Prompt"></textarea>
       <div class="ai-actions"><button class="go" id="genGo" type="button">Generate</button></div>
       <div id="genOut" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section id="video-gen">
+  <div class="wrap">
+    <div class="section-head"><div><div class="kicker">New</div><h2>AI Video Gen</h2></div><p class="section-desc">Text likhe chhoto video banao. Video toiri hote 1-5 minute lagte pare, page khola rakho.</p></div>
+    <div class="glass toolbox">
+      <div class="ai-row"><select id="vidModel" aria-label="Video model"></select></div>
+      <textarea id="vidPrompt" maxlength="1000" placeholder="Kemon video chao likho (jemon: a cat walking on a rainy Dhaka street, cinematic)" aria-label="Prompt"></textarea>
+      <div class="ai-actions"><button class="go" id="vidGo" type="button">Generate Video</button></div>
+      <div id="vidOut" aria-live="polite"></div>
     </div>
   </div>
 </section>
@@ -602,6 +614,32 @@ $('packGo').onclick=async()=>{
   $('packRatio').replaceChildren(...d.ratios.map(r=>el('option',{value:r,textContent:'Ratio '+r})));
  }catch(e){aiErr($('packOut'),'Model list load hoyni.')}
 })();
+
+/* AI Video Gen (fal.ai) */
+(async()=>{try{const d=await(await fetch('/api/video-gen/models')).json();$('vidModel').replaceChildren(...d.models.map(m=>el('option',{value:m.id,textContent:m.name})))}catch(e){aiErr($('vidOut'),'Video model list load hoyni.')}})();
+$('vidGo').onclick=async()=>{
+ const out=$('vidOut'),prompt=$('vidPrompt').value.trim();
+ if(!prompt)return aiErr(out,'Prompt likho.');
+ $('vidGo').disabled=true;
+ const note=el('p',{className:'note',textContent:'Queue-te pathano hocche...'});out.replaceChildren(note);
+ try{
+  const r=await fetch('/api/video-gen/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:$('vidModel').value,prompt})});
+  const s=await r.json();if(!r.ok)throw new Error(s.error||'Start hoyni.');
+  const t0=Date.now();
+  while(true){
+   if(Date.now()-t0>600000)throw new Error('Onek somoy lagche, pore abar chesta koro.');
+   await new Promise(ok=>setTimeout(ok,4000));
+   const q=await fetch('/api/video-gen/status?id='+s.id),d=await q.json();
+   if(!q.ok)throw new Error(d.error||'Status check hoyni.');
+   if(d.status==='COMPLETED'){
+    const a=link(d.url,'Save video');a.download='medianest-video.mp4';
+    out.replaceChildren(el('video',{src:d.url,controls:true,autoplay:true,loop:true,className:'out-media'}),a);break;
+   }
+   note.textContent=(d.status==='IN_PROGRESS'?'Video toiri hocche':'Queue-te opekkha'+(d.position!=null?' (position '+d.position+')':''))+'... '+Math.round((Date.now()-t0)/1000)+'s';
+  }
+ }catch(e){aiErr(out,e.message)}
+ $('vidGo').disabled=false;
+};
 </script>
 <a href="/stock.html" style="display:inline-block;margin:20px 0;padding:12px 18px;border-radius:10px;text-decoration:none">Adobe Stock Assistant</a>
 </body>
