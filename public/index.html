@@ -117,13 +117,13 @@ textarea:focus{outline:2px solid rgba(0,229,255,.6);outline-offset:2px}
   <div class="wrap nav">
     <a class="logo" href="#home"><span class="logo-dot"></span>MediaNest</a>
     <nav class="links" aria-label="Main">
-      <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#video-gen">Video</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
+      <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
     </nav>
     <a class="nav-cta" href="#contact">Hire Me</a>
     <button class="menu" id="menuBtn" aria-label="Menu">☰</button>
   </div>
   <div class="wrap mobile-links" id="mobileLinks">
-    <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#video-gen">Video</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
+    <a href="#tools">Tools</a><a href="#ai-gen">AI Gen</a><a href="#ai-edit">AI Edit</a><a href="#upscale">Upscale</a><a href="#vector">Vector</a><a href="#pack">Adobe Pack</a><a href="#services">Services</a><a href="#about">About</a><a href="#contact">Contact</a>
   </div>
 </header>
 
@@ -183,24 +183,12 @@ textarea:focus{outline:2px solid rgba(0,229,255,.6);outline-offset:2px}
 
 <section id="ai-gen">
   <div class="wrap">
-    <div class="section-head"><div><div class="kicker">New</div><h2>AI Image Gen</h2></div><p class="section-desc">Shudhu likhe chhobi banao. 13-ta AI model (Midjourney shoho), ratio select koro, ekshate 1 theke 5 ta chhobi gen koro.</p></div>
+    <div class="section-head"><div><div class="kicker">New</div><h2>AI Image Gen</h2></div><p class="section-desc">Shudhu likhe chhobi banao. 16-ta AI model (Midjourney + 3-ta Pollinations model shoho), ratio select koro, ekshate 1 theke 5 ta chhobi gen koro.</p></div>
     <div class="glass toolbox">
       <div class="ai-row"><select id="genModel" aria-label="Model"></select><select id="genRatio" aria-label="Ratio"></select><select id="genCount" aria-label="Koyta chhobi"><option value="1">1 ta chhobi ekshate</option><option value="2">2 ta chhobi ekshate</option><option value="3">3 ta chhobi ekshate</option><option value="4">4 ta chhobi ekshate</option><option value="5" selected>5 ta chhobi ekshate</option></select></div>
       <textarea id="genPrompt" maxlength="1000" placeholder="Kemon chhobi chao likho (jemon: neon-lit rainy Dhaka street, cinematic)" aria-label="Prompt"></textarea>
       <div class="ai-actions"><button class="go" id="genGo" type="button">Generate</button></div>
       <div id="genOut" aria-live="polite"></div>
-    </div>
-  </div>
-</section>
-
-<section id="video-gen">
-  <div class="wrap">
-    <div class="section-head"><div><div class="kicker">New</div><h2>AI Video Gen</h2></div><p class="section-desc">Text likhe chhoto video banao. Video toiri hote 1-5 minute lagte pare, page khola rakho.</p></div>
-    <div class="glass toolbox">
-      <div class="ai-row"><select id="vidModel" aria-label="Video model"></select></div>
-      <textarea id="vidPrompt" maxlength="1000" placeholder="Kemon video chao likho (jemon: a cat walking on a rainy Dhaka street, cinematic)" aria-label="Prompt"></textarea>
-      <div class="ai-actions"><button class="go" id="vidGo" type="button">Generate Video</button></div>
-      <div id="vidOut" aria-live="polite"></div>
     </div>
   </div>
 </section>
@@ -372,7 +360,13 @@ async function api(path){const r=await fetch(path);const d=await r.json().catch(
 const clear=()=>$('out').replaceChildren();
 const show=(...n)=>{clear();$('out').append(...n)};
 async function runVideo(v){const d=await api('/api/video?url='+encodeURIComponent(v));const box=el('div');if(d.title)box.append(el('p',{textContent:d.title}));(d.videos||[]).slice(0,4).forEach((u,i)=>box.append(link(u,'Video '+(i+1))));(d.audios||[]).slice(0,2).forEach((u,i)=>box.append(link(u,'Audio '+(i+1))));show(box)}
-async function runYt(v){const d=await api('/api/yt/search?q='+encodeURIComponent(v));const box=el('div');(d.results||[]).forEach(r=>{const url=r.url||r.link;const t=el('div',{className:'t'},el('b',{textContent:r.title||'Untitled'}),el('span',{className:'m',textContent:[r.duration||r.timestamp,r.author&&(r.author.name||r.author)].filter(Boolean).join(' - ')}));const acts=el('div');['mp3','mp4'].forEach(type=>{const b=el('button',{className:'btn',textContent:type.toUpperCase()});b.onclick=async()=>{b.textContent='...';try{const x=await api('/api/yt/dl?type='+type+'&url='+encodeURIComponent(url));window.open(x.url,'_blank','noopener');b.textContent=type.toUpperCase()}catch(e){b.textContent='Fail'}};acts.append(b)});t.append(acts);const img=r.thumbnail||r.thumb||r.image;box.append(el('div',{className:'item'},img?el('img',{src:img,alt:'',loading:'lazy'}):'',t))});show(box)}
+async function runYt(v){const d=await api('/api/yt/search?q='+encodeURIComponent(v));const box=el('div');const queue=[];let busy=0;
+const pump=()=>{while(busy<3&&queue.length){busy++;queue.shift()().finally(()=>{busy--;pump()})}};
+(d.results||[]).forEach(r=>{const url=r.url||r.link;const t=el('div',{className:'t'},el('b',{textContent:r.title||'Untitled'}),el('span',{className:'m',textContent:[r.duration||r.timestamp,r.author&&(r.author.name||r.author)].filter(Boolean).join(' - ')}));const acts=el('div',{className:'fmts'});t.append(acts);
+const load=async()=>{acts.replaceChildren(el('span',{className:'m',textContent:'Link ready hocche...'}));try{const x=await api('/api/yt/formats?url='+encodeURIComponent(url));acts.replaceChildren(...x.formats.map(f=>el('a',{className:'btn',href:f.url,target:'_blank',rel:'noopener',download:'',textContent:'\u2B07 '+f.label})))}catch(e){const b=el('button',{className:'btn',textContent:'Retry'});b.onclick=()=>{queue.push(load);pump()};acts.replaceChildren(b)}};
+const img=r.thumbnail||r.thumb||r.image;const item=el('div',{className:'item'},img?el('img',{src:img,alt:'',loading:'lazy'}):'',t);box.append(item);
+if('IntersectionObserver' in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){io.disconnect();queue.push(load);pump()}},{rootMargin:'200px'});io.observe(item)}else{queue.push(load)}});
+show(box);pump()}
 async function runNamaz(v){const d=await api('/api/namaz?city='+encodeURIComponent(v));show(...Object.entries(d.timings||{}).map(([k,t])=>el('div',{className:'row'},el('span',{textContent:k}),el('b',{textContent:t}))))}
 async function runWeather(v){const d=await api('/api/weather?city='+encodeURIComponent(v));show(el('div',{className:'big',textContent:Math.round(d.temp)+'°C'}),el('p',{textContent:d.city+' - '+d.desc}),el('p',{className:'m',textContent:'Feels like '+Math.round(d.feels)+'°C, humidity '+d.humidity+'%, wind '+d.wind+' m/s'}))}
 async function runShort(v){const d=await api('/api/short?url='+encodeURIComponent(v));const b=el('button',{className:'btn',textContent:'Copy'});b.onclick=()=>navigator.clipboard.writeText(d.short).then(()=>b.textContent='Copied');show(el('p',{textContent:d.short}),b)}
@@ -614,32 +608,6 @@ $('packGo').onclick=async()=>{
   $('packRatio').replaceChildren(...d.ratios.map(r=>el('option',{value:r,textContent:'Ratio '+r})));
  }catch(e){aiErr($('packOut'),'Model list load hoyni.')}
 })();
-
-/* AI Video Gen (fal.ai) */
-(async()=>{try{const d=await(await fetch('/api/video-gen/models')).json();$('vidModel').replaceChildren(...d.models.map(m=>el('option',{value:m.id,textContent:m.name})))}catch(e){aiErr($('vidOut'),'Video model list load hoyni.')}})();
-$('vidGo').onclick=async()=>{
- const out=$('vidOut'),prompt=$('vidPrompt').value.trim();
- if(!prompt)return aiErr(out,'Prompt likho.');
- $('vidGo').disabled=true;
- const note=el('p',{className:'note',textContent:'Queue-te pathano hocche...'});out.replaceChildren(note);
- try{
-  const r=await fetch('/api/video-gen/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:$('vidModel').value,prompt})});
-  const s=await r.json();if(!r.ok)throw new Error(s.error||'Start hoyni.');
-  const t0=Date.now();
-  while(true){
-   if(Date.now()-t0>600000)throw new Error('Onek somoy lagche, pore abar chesta koro.');
-   await new Promise(ok=>setTimeout(ok,4000));
-   const q=await fetch('/api/video-gen/status?id='+s.id),d=await q.json();
-   if(!q.ok)throw new Error(d.error||'Status check hoyni.');
-   if(d.status==='COMPLETED'){
-    const a=link(d.url,'Save video');a.download='medianest-video.mp4';
-    out.replaceChildren(el('video',{src:d.url,controls:true,autoplay:true,loop:true,className:'out-media'}),a);break;
-   }
-   note.textContent=(d.status==='IN_PROGRESS'?'Video toiri hocche':'Queue-te opekkha'+(d.position!=null?' (position '+d.position+')':''))+'... '+Math.round((Date.now()-t0)/1000)+'s';
-  }
- }catch(e){aiErr(out,e.message)}
- $('vidGo').disabled=false;
-};
 </script>
 <a href="/stock.html" style="display:inline-block;margin:20px 0;padding:12px 18px;border-radius:10px;text-decoration:none">Adobe Stock Assistant</a>
 </body>
