@@ -192,7 +192,9 @@ const MODELS = [
   { id: 9, name: 'Nano Banana 2', tag: '🍌', path: '/api/nanobanana2', supportsImage: true },
   { id: 10, name: 'Qwen Image 2', tag: '🌀', path: '/api/qwenimage2', supportsImage: true },
   { id: 11, name: 'Qwen Image', tag: '🌀', path: '/api/qwen-image', supportsImage: false },
-  { id: 12, name: 'SeedDream 4', tag: '🌱', path: '/api/seedream4', supportsImage: true }
+  { id: 12, name: 'SeedDream 4', tag: '🌱', path: '/api/seedream4', supportsImage: true },
+  // Midjourney: alada API key lage (env: MIDJOURNEY_KEY). Base URL na dile hub-er upor cholbe.
+  { id: 13, name: 'Midjourney', tag: '🎨', path: process.env.MIDJOURNEY_PATH || '/api/midjourney', supportsImage: false, keyEnv: 'MIDJOURNEY_KEY', keyDefault: '1005275961e56ce3f3b9c240904a09c37f95b4cb16d7bf34b9032269875a7334', baseEnv: 'MIDJOURNEY_BASE' }
 ];
 const RATIOS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
 const MAX_IMAGES = 5;
@@ -231,11 +233,28 @@ async function runModel(model, prompt, ratio, urls) {
   params.set('prompt', prompt);
   params.set('ratio', ratio);
   urls.forEach((u) => params.append('image', u));
-  const r = await axios.get(`${await hub()}${model.path}`, {
-    params, timeout: 180000, responseType: 'arraybuffer', validateStatus: () => true
-  });
-  const type = String(r.headers['content-type'] || '');
-  const buf = Buffer.from(r.data);
+  const headers = {};
+  if (model.keyEnv) {
+    const key = process.env[model.keyEnv] || model.keyDefault;
+    if (!key) { const e = new Error(`${model.name} failed: ${model.keyEnv} env set kora nai.`); e.upstream = true; throw e; }
+    params.set('apikey', key);
+    headers['x-api-key'] = key;
+    headers.Authorization = `Bearer ${key}`;
+  }
+  const root = (model.baseEnv && process.env[model.baseEnv]) ? process.env[model.baseEnv].replace(/\/+$/, '') : await hub();
+  const opt = { headers, timeout: 180000, responseType: 'arraybuffer', validateStatus: () => true };
+  let r = await axios.get(`${root}${model.path}`, { ...opt, params });
+  let type = String(r.headers['content-type'] || '');
+  let buf = Buffer.from(r.data);
+  // Midjourney-r moto API JSON-e image URL dey -> sheta fetch kore nei
+  if (r.status < 400 && type.includes('json')) {
+    try {
+      const j = JSON.parse(buf.toString('utf8'));
+      const u = [j.url, j.image, j.imageUrl, j.image_url, j.result, j.data, ...(Array.isArray(j.images) ? j.images : []), ...(Array.isArray(j.urls) ? j.urls : [])]
+        .map((x) => (x && typeof x === 'object' ? x.url : x)).find((x) => typeof x === 'string' && /^https?:\/\//.test(x));
+      if (u) { r = await axios.get(u, { timeout: 120000, responseType: 'arraybuffer', validateStatus: () => true }); type = String(r.headers['content-type'] || ''); buf = Buffer.from(r.data); }
+    } catch { /* niche error handle hobe */ }
+  }
   if (r.status >= 400 || !type.startsWith('image/')) {
     let msg = `HTTP ${r.status}`;
     try { const j = JSON.parse(buf.toString('utf8')); msg = j.message || j.error || msg; }
@@ -248,7 +267,7 @@ async function runModel(model, prompt, ratio, urls) {
 const aiHandler = (mode) => wrap(async (req, res) => {
   const b = req.body || {};
   const model = MODELS.find((m) => m.id === parseInt(b.model, 10));
-  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-12).' });
+  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-13).' });
   const prompt = String(b.prompt || '').trim().slice(0, 1000);
   if (!prompt) return res.status(400).json({ error: 'Prompt likhun.' });
   const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';
@@ -371,7 +390,7 @@ async function previewJpeg(svg, fallbackBuf) {
 app.post('/api/ai/pack', express.json({ limit: '1mb' }), wrap(async (req, res) => {
   const b = req.body || {};
   const model = MODELS.find((m) => m.id === parseInt(b.model, 10));
-  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-12).' });
+  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-13).' });
   const prompt = String(b.prompt || '').trim().slice(0, 600);
   if (!prompt) return res.status(400).json({ error: 'Chhobir idea/prompt likhun.' });
   const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';

@@ -6,7 +6,7 @@
 Render deploy: Build `npm install`, Start `npm start`, env vars dashboard-e dao.
 
 ## AI Image Gen + AI Image Edit (GenX models)
-- `#ai-gen`: shudhu prompt theke chhobi, shob 12 model, ratio 1:1 / 16:9 / 9:16 / 4:3 / 3:4
+- `#ai-gen`: shudhu prompt theke chhobi, shob 13 model (13 = Midjourney), ratio 1:1 / 16:9 / 9:16 / 4:3 / 3:4
 - `#ai-edit`: ekshathe max 5-ta chhobi upload + prompt (Qwen Image bade 11-ta model)
 - API: `GET /api/ai/models`, `POST /api/ai/gen` ({model, prompt, ratio}), `POST /api/ai/edit` ({model, prompt, ratio, images:[dataURL]})
 - Dependency: `form-data` -> `npm install` abar chalao
@@ -30,3 +30,7 @@ Render deploy: Build `npm install`, Start `npm start`, env vars dashboard-e dao.
 
 ## AI Image Gen (1-5 ta ekshate)
 - `#ai-gen`-e "N ta chhobi ekshate" select (default 5), ekta fail korle baki gulo thik thake, "Save all"
+
+## Midjourney (model 13)
+- Env: `MIDJOURNEY_KEY` (must), `MIDJOURNEY_BASE` (optional, na dile hub URL), `MIDJOURNEY_PATH` (optional, default `/api/midjourney`)
+- Shudhu text-to-image (edit/pack-e image input nei). API JSON-e image URL dile server nije fetch kore.
