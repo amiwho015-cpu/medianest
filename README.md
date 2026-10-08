@@ -17,12 +17,16 @@ Render deploy: Build `npm install`, Start `npm start`, env vars dashboard-e dao.
 - Notun dependency: `sharp` -> `npm install` abar chalao
 
 ## Image to Vector (SVG)
-- Section `#vector`, API: `POST /api/ai/vector` ({image: dataURL, style: illustration|logo|detailed|bw, removeBg: bool})
-- imagetracerjs diye color trace -> SVG (viewBox shoho, scalable). Adobe Stock-er jonno SVG ta Illustrator/Inkscape-e EPS/AI save korte hobe
-- Notun dependency: `imagetracerjs` -> `npm install` abar chalao
+- Section `#vector`, API: `POST /api/ai/vector` ({image: dataURL, style: icons|illustration|logo|detailed|bw, removeBg: bool})
+- Nijer smooth tracer (`lib/tracer.js`, shudhu `sharp` lage, `imagetracerjs` ar lage na): k-means rong -> stacked layer (gap/halo nai) -> sub-pixel contour -> corner-aware Bezier.
 
-## Adobe Stock Vector Pack (one click)
-- Section `#pack`, API: `POST /api/ai/pack` ({prompt, model, ratio, style, vectorFriendly, removeBg, extraKeywords})
-- Flow: AI image (GenX) -> trace -> SVG + EPS (`lib/vectorpack.js`) -> JPG preview (sharp) -> rule-based SEO (title max 200, keywords max 49)
-- Client e title/keywords edit kora jay; ZIP-e eps, svg, jpg, metadata.csv, keywords.txt, upload-checklist.txt (ZIP: JSZip cdnjs theke)
-- Adobe-e auto upload nai (login/password ei site-e dewa hoy na), upload portal-e manually
+## Adobe Stock Vector Pack (one click, 1-5 ta ekshate)
+- Section `#pack`, API: `POST /api/ai/pack` ({prompt, model, ratio, style, vectorFriendly, removeBg, extraKeywords, variant 1-5})
+- UI-te "N ta pack ekshate" (default 5): 5-ta request parallel, server-e trace max 2-ta ekshate
+- Flow: AI image -> smooth trace -> SVG + EPS (even-odd) -> JPG preview (>=4MP) -> SEO (title max 200, keywords max 49)
+- Keyword-e rong chhobir asol palette theke ashe; notun `Icon Set` style (unique icon, grid, no duplicate)
+- Quality warning card-e dekhay. Per-pack ZIP + "Download ALL" ZIP
+- Adobe-e auto upload nai, portal-e manually. AI-generated hole "generative AI" tick dao
+
+## AI Image Gen (1-5 ta ekshate)
+- `#ai-gen`-e "N ta chhobi ekshate" select (default 5), ekta fail korle baki gulo thik thake, "Save all"

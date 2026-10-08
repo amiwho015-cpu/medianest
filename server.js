@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const FormData = require('form-data');
 const sharp = require('sharp');
-const ImageTracer = require('imagetracerjs');
+const Tracer = require('./lib/tracer');
 const VP = require('./lib/vectorpack');
 
 const app = express();
@@ -327,28 +327,18 @@ app.post('/api/ai/upscale', express.json({ limit: '15mb' }), wrap(async (req, re
 }));
 
 // ---------- Image -> Vector (SVG) ----------
-const BW_PAL = [{ r: 0, g: 0, b: 0, a: 255 }, { r: 255, g: 255, b: 255, a: 255 }];
-const VEC_STYLES = {
-  logo: { numberofcolors: 8, pathomit: 16, ltres: 1, qtres: 1, blurradius: 0, roundcoords: 2, viewbox: true, maxSide: 1200 },
-  illustration: { numberofcolors: 24, pathomit: 8, ltres: 1, qtres: 1, blurradius: 1, blurdelta: 20, roundcoords: 2, viewbox: true, maxSide: 1200 },
-  detailed: { numberofcolors: 48, pathomit: 4, ltres: 0.5, qtres: 0.5, blurradius: 0, roundcoords: 2, viewbox: true, maxSide: 1000 },
-  bw: { numberofcolors: 2, colorquantcycles: 1, pal: BW_PAL, pathomit: 12, ltres: 1, qtres: 1, roundcoords: 2, viewbox: true, maxSide: 1400 }
-};
+// Smooth stacked tracer (lib/tracer.js): halo/kanpa edge nai, Adobe Stock-er jonno.
+const styleColors = (k) => (VP.STYLES[k] || VP.STYLES.illustration).colors;
+const traceToSvg = (buf, styleKey, removeBg) => Tracer.trace(buf, {
+  colors: styleColors(styleKey), removeBg, maxSide: styleKey === 'detailed' ? 1200 : 1400,
+  minArea: styleKey === 'detailed' ? 24 : 40
+});
 
-// chhobi buffer -> SVG (shared: /api/ai/vector ar /api/ai/pack)
-async function traceToSvg(buf, styleKey, removeBg) {
-  const { maxSide, ...opts } = VEC_STYLES[styleKey] || VEC_STYLES.illustration;
-  const { data, info } = await sharp(buf, { limitInputPixels: 268402689 })
-    .rotate().flatten({ background: '#ffffff' })
-    .resize(maxSide, maxSide, { fit: 'inside', withoutEnlargement: true })
-    .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  let svg = ImageTracer.imagedataToSVG({ width: info.width, height: info.height, data: new Uint8ClampedArray(data) }, opts);
-  if (removeBg) // shada-proti path muche transparent background
-    svg = svg.replace(/<path[^>]*fill="rgb\((\d+),(\d+),(\d+)\)"[^>]*\/>/g, (m, r, g, bl) => (+r >= 245 && +g >= 245 && +bl >= 245 ? '' : m));
-  const paths = (svg.match(/<path /g) || []).length;
-  if (!paths) throw new Error('Vector banano jayni. Onno style ba bhalo chhobi dao.');
-  return { svg, paths };
-}
+// CPU-heavy trace ekshate onek holeo max 2-ta cholbe
+const limiter = (n) => { let a = 0; const q = [];
+  const next = () => { if (a >= n || !q.length) return; a++; const t = q.shift(); t.fn().then(t.ok, t.no).finally(() => { a--; next(); }); };
+  return (fn) => new Promise((ok, no) => { q.push({ fn, ok, no }); next(); }); };
+const traceLimit = limiter(2);
 
 app.post('/api/ai/vector', express.json({ limit: '15mb' }), wrap(async (req, res) => {
   const b = req.body || {};
@@ -358,7 +348,8 @@ app.post('/api/ai/vector', express.json({ limit: '15mb' }), wrap(async (req, res
     return res.status(400).json({ error: 'Valid chhobi dao (PNG/JPG/WEBP).' });
   const buf = Buffer.from(s.slice(comma + 1), 'base64');
   if (!buf.length || buf.length > MAX_IMAGE_BYTES) return res.status(400).json({ error: 'Chhobi khub boro (max 8MB).' });
-  const { svg, paths } = await traceToSvg(buf, b.style, !!b.removeBg);
+  const style = VP.STYLES[b.style] ? b.style : 'illustration';
+  const { svg, paths } = await traceLimit(() => traceToSvg(buf, style, b.removeBg !== false));
   const out = '<?xml version="1.0" encoding="UTF-8"?>\n' + svg;
   res.set({ 'X-Paths': String(paths), 'X-Size': String(Buffer.byteLength(out)) });
   res.type('image/svg+xml').send(out);
@@ -384,17 +375,29 @@ app.post('/api/ai/pack', express.json({ limit: '1mb' }), wrap(async (req, res) =
   const prompt = String(b.prompt || '').trim().slice(0, 600);
   if (!prompt) return res.status(400).json({ error: 'Chhobir idea/prompt likhun.' });
   const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';
-  const style = VEC_STYLES[b.style] ? b.style : 'illustration';
-  const removeBg = !!b.removeBg;
+  const style = VP.STYLES[b.style] ? b.style : 'icons';
+  const removeBg = b.removeBg !== false;
+  const variant = Math.min(5, Math.max(1, parseInt(b.variant, 10) || 1));
 
-  const gen = await runModel(model, VP.buildPrompt(prompt, style, b.vectorFriendly !== false), ratio, []);
-  const { svg, paths } = await traceToSvg(gen.buf, style, removeBg);
-  const seo = VP.makeSeo(prompt, style, b.extraKeywords, removeBg);
-  const eps = VP.svgToEps(svg, seo.title);
-  const jpg = await previewJpeg(svg, gen.buf);
+  const gen = await runModel(model, VP.buildPrompt(prompt, style, b.vectorFriendly !== false, variant), ratio, []);
+  const t = await traceLimit(() => traceToSvg(gen.buf, style, removeBg));
+  const seo = VP.makeSeo(prompt, style, b.extraKeywords, removeBg, t.colors);
+  const eps = VP.svgToEps(t.layers, t.width, t.height, seo.title);
+  const jpg = await previewJpeg(t.svg, gen.buf);
+
+  // Adobe quality gate: submit-er age ki ki thik nai
+  const warnings = [];
+  if (t.paths > 4000) warnings.push(`Path onek beshi (${t.paths}). Chhobi onek jhapsha, Adobe reject korte pare. Style "Logo/Icon" ba simple prompt try koro.`);
+  if (t.layerCount > 14) warnings.push(`Rong beshi (${t.layerCount}). Flat vector-e kom rong bhalo.`);
+  if (t.paths < 3) warnings.push('Khub kom shape pawa gechhe, chhobi khali hote pare.');
+  const mp = (await sharp(jpg).metadata());
+  if (mp.width * mp.height < 4e6) warnings.push('JPG preview 4MP-er niche.');
+  if (b.vectorFriendly === false) warnings.push('Vector-friendly prompt bondho chhilo, trace-er quality kharap hote pare.');
+
   res.json({
-    title: seo.title, keywords: seo.keywords, paths,
-    svg: '<?xml version="1.0" encoding="UTF-8"?>\n' + svg,
+    title: seo.title, keywords: seo.keywords, paths: t.paths, layers: t.layerCount, warnings,
+    colors: seo.colorWords, variant,
+    svg: '<?xml version="1.0" encoding="UTF-8"?>\n' + t.svg,
     eps: eps.eps, jpg: jpg.toString('base64')
   });
 }));
