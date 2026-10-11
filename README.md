@@ -6,8 +6,8 @@
 Render deploy: Build `npm install`, Start `npm start`, env vars dashboard-e dao.
 
 ## AI Image Gen + AI Image Edit (GenX models)
-- `#ai-gen`: shudhu prompt theke chhobi, shob 13 model (13 = Midjourney), ratio 1:1 / 16:9 / 9:16 / 4:3 / 3:4
-- `#ai-edit`: ekshathe max 5-ta chhobi upload + prompt (Qwen Image bade 11-ta model)
+- `#ai-gen`: shudhu prompt theke chhobi, shob 30-ta model (13 = Midjourney, 14-16 = Pollinations, 17-20 = Insta-Bot3 hub, 21-30 = NKX GEN), ratio 1:1 / 16:9 / 9:16 / 4:3 / 3:4
+- `#ai-edit`: ekshathe max 5-ta chhobi upload + prompt (shudhu edit-supported model gulo)
 - API: `GET /api/ai/models`, `POST /api/ai/gen` ({model, prompt, ratio}), `POST /api/ai/edit` ({model, prompt, ratio, images:[dataURL]})
 - Dependency: `form-data` -> `npm install` abar chalao
 
@@ -34,3 +34,9 @@ Render deploy: Build `npm install`, Start `npm start`, env vars dashboard-e dao.
 ## Midjourney (model 13)
 - Env: `MIDJOURNEY_KEY` (must), `MIDJOURNEY_BASE` (optional, na dile hub URL), `MIDJOURNEY_PATH` (optional, default `/api/midjourney`)
 - Shudhu text-to-image (edit/pack-e image input nei). API JSON-e image URL dile server nije fetch kore.
+
+## Insta-Bot3 models (17-30)
+- 17-20 (hub, text-to-image): Flux 1 Schnell, DALL·E 3, Poli, ArtX
+- 21-30 (NKX GEN, `POST /api/generate`): Flux 2 Dev / Flex / Pro, Flux Krea, Flux Kontext Dev, Ideogram V3 Turbo, SeedDream 4.5, SeedDream 5, Qwen Image 2 Pro, Gemini 2.5 Flash Image
+- Chhobi dile edit-variant (`...-edit`) auto select hoy (jeta thake)
+- Env (optional): `NKX_API_KEY` (default Insta-Bot3-er key), `NKX_BASE` (default `https://nkx-gen.neokex.xyz`)

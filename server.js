@@ -237,8 +237,26 @@ const MODELS = [
   // Pollinations public image models — no upstream key required for the basic endpoint.
   { id: 14, name: 'Pollinations Flux', tag: '🌸', pollinationsModel: 'flux', supportsImage: false },
   { id: 15, name: 'Pollinations Z-Image', tag: '🎨', pollinationsModel: 'zimage', supportsImage: false },
-  { id: 16, name: 'Pollinations Klein', tag: '⚡', pollinationsModel: 'klein', supportsImage: false }
+  { id: 16, name: 'Pollinations Klein', tag: '⚡', pollinationsModel: 'klein', supportsImage: false },
+  // Insta-Bot3 (GoatBot) commands-er hub endpoint model — text-to-image
+  { id: 17, name: 'Flux 1 Schnell', tag: '🌩️', path: '/api/flux-1-schnell', supportsImage: false },
+  { id: 18, name: 'DALL·E 3', tag: '🖼️', path: '/api/dalle3', supportsImage: false },
+  { id: 19, name: 'Poli', tag: '🌼', path: '/api/poli', supportsImage: false },
+  { id: 20, name: 'ArtX', tag: '🎭', path: '/api/artx', supportsImage: false },
+  // Insta-Bot3 `gen` command-er NKX GEN model (POST {NKX_BASE}/api/generate).
+  // nkxEditModel thakle chhobi dile sheta use hoy; na thakle nkxModel-i chhobi nei (supportsImage: true hole).
+  { id: 21, name: 'Flux 2 Dev', tag: '🔥', nkxModel: 'flux-2-dev', nkxEditModel: 'flux-2-dev-edit', supportsImage: true },
+  { id: 22, name: 'Flux 2 Flex', tag: '🔥', nkxModel: 'flux-2-flex', supportsImage: false },
+  { id: 23, name: 'Flux 2 Pro', tag: '🔥', nkxModel: 'flux-2-pro', nkxEditModel: 'flux-2-pro-edit', supportsImage: true },
+  { id: 24, name: 'Flux Krea', tag: '🌊', nkxModel: 'flux-krea', nkxEditModel: 'flux-krea-edit', supportsImage: true },
+  { id: 25, name: 'Flux Kontext Dev', tag: '🧩', nkxModel: 'flux-kontext-dev', supportsImage: true },
+  { id: 26, name: 'Ideogram V3 Turbo', tag: '🔤', nkxModel: 'ideogram-v3-turbo', supportsImage: false },
+  { id: 27, name: 'SeedDream 4.5', tag: '🌱', nkxModel: 'seedream-4-5', nkxEditModel: 'seedream-4-5-edit', supportsImage: true },
+  { id: 28, name: 'SeedDream 5', tag: '🌱', nkxModel: 'seedream-5', nkxEditModel: 'seedream-5-edit', supportsImage: true },
+  { id: 29, name: 'Qwen Image 2 Pro', tag: '🌀', nkxModel: 'qwen-image-2-pro', supportsImage: false },
+  { id: 30, name: 'Gemini 2.5 Flash Image', tag: '💎', nkxModel: 'gemini-2-5-flash-image', nkxEditModel: 'gemini-2-5-flash-image-edit', supportsImage: true }
 ];
+const MODEL_COUNT = MODELS.length;
 const RATIOS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
 const MAX_IMAGES = 5;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -293,6 +311,37 @@ async function runModel(model, prompt, ratio, urls) {
     return { buf, type };
   }
 
+  // NKX GEN: JSON POST -> { url } -> image fetch
+  if (model.nkxModel) {
+    const root = (process.env.NKX_BASE || 'https://nkx-gen.neokex.xyz').replace(/\/+$/, '');
+    const key = process.env.NKX_API_KEY || 'nkxgen';
+    const modelId = urls.length && model.nkxEditModel ? model.nkxEditModel : model.nkxModel;
+    const payload = { prompt, model: modelId, ratio, resolution: '2k', wait: true };
+    if (urls.length) payload.image_urls = urls;
+    const r = await axios.post(`${root}/api/generate`, payload, {
+      headers: { 'X-API-Key': key, 'User-Agent': 'MediaNest/1.0' }, timeout: 300000, validateStatus: () => true
+    });
+    const d = r.data && typeof r.data === 'object' ? r.data : {};
+    const fail = (msg) => { const e = new Error(`${model.name} failed: ${msg}`); e.upstream = true; return e; };
+    if (r.status >= 400) {
+      const det = d.detail;
+      let msg = `HTTP ${r.status}`;
+      if (typeof det === 'string') msg = det;
+      else if (Array.isArray(det)) msg = det.map((x) => x.msg || x).join('; ');
+      else if (det && typeof det === 'object') msg = det.error || d.error || msg;
+      else if (d.error || d.hint) msg = d.error || d.hint;
+      else if (r.status === 402) msg = 'credit shesh, kichukkhon pore abar chesta korun.';
+      else if (r.status === 504) msg = 'job somoy moto shesh hoyni.';
+      throw fail(msg);
+    }
+    const url = d.url || d.thumbnail;
+    if (!isHttp(url)) throw fail('upstream kono file dey nai.');
+    const f = await axios.get(url, { timeout: 120000, responseType: 'arraybuffer', validateStatus: () => true });
+    const ftype = String(f.headers['content-type'] || '');
+    if (f.status >= 400 || !ftype.startsWith('image/')) throw fail(`chhobi download hoyni (HTTP ${f.status}).`);
+    return { buf: Buffer.from(f.data), type: ftype };
+  }
+
   const params = new URLSearchParams();
   params.set('prompt', prompt);
   params.set('ratio', ratio);
@@ -331,7 +380,7 @@ async function runModel(model, prompt, ratio, urls) {
 const aiHandler = (mode) => wrap(async (req, res) => {
   const b = req.body || {};
   const model = MODELS.find((m) => m.id === parseInt(b.model, 10));
-  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-16).' });
+  if (!model) return res.status(400).json({ error: `Valid model select korun (1-${MODEL_COUNT}).` });
   const prompt = String(b.prompt || '').trim().slice(0, 1000);
   if (!prompt) return res.status(400).json({ error: 'Prompt likhun.' });
   const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';
@@ -354,7 +403,7 @@ const aiHandler = (mode) => wrap(async (req, res) => {
   res.type(out.type).send(out.buf);
 });
 
-// Image Gen: shudhu text -> image (shob 12 model)
+// Image Gen: shudhu text -> image (shob model)
 app.post('/api/ai/gen', express.json({ limit: '1mb' }), aiHandler('gen'));
 // Image Edit: chhobi upload (max 5) + prompt
 app.post('/api/ai/edit', express.json({ limit: '40mb' }), aiHandler('edit'));
@@ -454,7 +503,7 @@ async function previewJpeg(svg, fallbackBuf) {
 app.post('/api/ai/pack', express.json({ limit: '1mb' }), wrap(async (req, res) => {
   const b = req.body || {};
   const model = MODELS.find((m) => m.id === parseInt(b.model, 10));
-  if (!model) return res.status(400).json({ error: 'Valid model select korun (1-16).' });
+  if (!model) return res.status(400).json({ error: `Valid model select korun (1-${MODEL_COUNT}).` });
   const prompt = String(b.prompt || '').trim().slice(0, 600);
   if (!prompt) return res.status(400).json({ error: 'Chhobir idea/prompt likhun.' });
   const ratio = RATIOS.includes(b.ratio) ? b.ratio : '1:1';
